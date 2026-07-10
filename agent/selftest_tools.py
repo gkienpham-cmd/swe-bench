@@ -17,8 +17,9 @@ import tempfile
 from pathlib import Path
 
 from agent.tools import (
-    BASH_TIMEOUT_S, MAX_GREP_MATCHES, bash, dispatch, edit_file,
-    format_test_result, grep_glob, parse_pytest_counts, read_file, reward_hack_flag,
+    BASH_TIMEOUT_S, MAX_GLOB_FILES, MAX_GREP_MATCHES, MAX_READ_CHARS,
+    MAX_READ_LINES, bash, dispatch, edit_file, format_test_result, grep_glob,
+    parse_pytest_counts, read_file, reward_hack_flag,
 )
 
 checks = 0
@@ -102,6 +103,44 @@ with tempfile.TemporaryDirectory() as td:
     content, err = grep_glob(wd, pattern="needle")
     ok(not err and f"capped at {MAX_GREP_MATCHES}" in content, "grep cap message appears")
 
+    # --- read_file windowing (D8-9: never dump whole files) ---
+    (wd / "bigfile.py").write_text("\n".join(f"x{i} = {i}" for i in range(1, 401)) + "\n")
+    content, err = read_file(wd, "bigfile.py")
+    ok(not err and content.startswith(f"[lines 1-{MAX_READ_LINES} of 400: bigfile.py]")
+       and f"x{MAX_READ_LINES} = " in content and f"\nx{MAX_READ_LINES + 1} = " not in content,
+       "read_file default on big file serves exactly the first window")
+    ok("file has 400 lines" in content and "start_line/end_line" in content,
+       "read_file omitted-range marker states total and the recovery move")
+    content, err = read_file(wd, "bigfile.py", 300)
+    ok(not err and content.startswith("[lines 300-400 of 400:") and "[file has" not in content
+       and "capped" not in content,
+       "read_file in-window tail range has no marker")
+    content, err = read_file(wd, "bigfile.py", 1, 400)
+    ok(not err and content.startswith(f"[lines 1-{MAX_READ_LINES} of 400:")
+       and f"continue from start_line={MAX_READ_LINES + 1}" in content,
+       "read_file explicit oversized range capped with continue-from marker")
+    content, err = read_file(wd, "bigfile.py", 100)
+    ok(not err and content.startswith(f"[lines 100-{100 + MAX_READ_LINES - 1} of 400:"),
+       "read_file start-only pagination serves one window from start")
+    (wd / "longline.txt").write_text("y" * (MAX_READ_CHARS + 10_000))
+    content, err = read_file(wd, "longline.txt")
+    ok(not err and f"truncated at {MAX_READ_CHARS} chars" in content,
+       "read_file char backstop still fires on pathological long lines")
+
+    # --- grep_glob directory summary (D8-9: summarize listings over the cap) ---
+    for pkg in ("pkg1", "pkg2", "pkg3"):
+        (wd / "many" / pkg).mkdir(parents=True)
+        for i in range(20):
+            (wd / "many" / pkg / f"f_{i:02d}.py").write_text("pass\n")
+    content, err = grep_glob(wd, glob="many/**/*.py")
+    ok(not err and content.startswith(f"[60 files match — over the {MAX_GLOB_FILES}-file cap"),
+       "glob over cap returns summary header with total count")
+    ok("many/pkg1  20" in content and "f_00.py" not in content,
+       "glob summary has per-directory counts and no individual filenames")
+    content, err = grep_glob(wd, glob="many/pkg1/*.py")
+    ok(not err and "many/pkg1/f_00.py" in content and "files match" not in content,
+       "glob under cap still lists files verbatim")
+
     # --- dispatch ---
     content, err = dispatch(wd, "run_tests", {})
     ok(err and "requires the Docker sandbox" in content, "run_tests without sandbox is a loud error")
@@ -173,6 +212,9 @@ with tempfile.TemporaryDirectory() as td:
        "toolbox: match-exactly-once error text preserved verbatim")
     resp = call_toolbox({"name": "grep_glob", "input": {"pattern": "shared = True"}})
     ok(not resp["is_error"] and "pkg/a.py" in resp["content"], "toolbox: grep_glob works through JSON")
+    resp = call_toolbox({"name": "read_file", "input": {"path": "bigfile.py"}})
+    ok(not resp["is_error"] and "file has 400 lines" in resp["content"],
+       "toolbox: windowing marker survives the JSON hop")
     resp = call_toolbox({"name": "bash", "input": {"command": "echo hi"}})
     ok(resp["is_error"] and "does not handle" in resp["content"],
        "toolbox: refuses tools it does not own (bash goes via docker exec)")

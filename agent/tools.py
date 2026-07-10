@@ -17,13 +17,17 @@ import subprocess
 from pathlib import Path, PurePosixPath
 
 # Truncation guard: never dump unbounded content into context.
-# Real windowing strategy is W2 (D8-9) scope.
-MAX_READ_CHARS = 50_000
+# Measured 2026-07-11 on django (analysis/measure_truncation.py): a no-range
+# read of a 3k-line file returns the full 50k-char cap (~12.5k tok); a
+# 250-line window is ~2.2k tok — 5.4-6.0x smaller, re-billed every turn.
+MAX_READ_LINES = 250          # lines served per read_file call
+MAX_READ_CHARS = 50_000       # backstop for pathological long-line files
 MAX_BASH_CHARS = 10_000       # per stream (stdout, stderr)
 BASH_TIMEOUT_S = 30
 TESTS_TIMEOUT_S = 120         # test suites get their own, longer budget
 MAX_GREP_MATCHES = 100
 MAX_GLOB_FILES = 50
+MAX_DIR_ROWS = 25             # rows in the over-cap per-directory summary
 SKIP_DIRS = {".git", ".venv", "__pycache__", "node_modules", ".tox", ".eggs"}
 
 TOOL_SCHEMAS = [
@@ -32,7 +36,10 @@ TOOL_SCHEMAS = [
         "description": (
             "Read a file from the repository, optionally restricted to a line range. "
             "Output starts with a header line stating the range and total line count. "
-            "Paths are relative to the repository root."
+            f"Returns at most {MAX_READ_LINES} lines per call; longer files or ranges "
+            "are truncated with a marker stating the total — page through with "
+            "start_line/end_line. Best used with a range around a grep_glob hit "
+            "(e.g. 30 lines before to 60 after). Paths are relative to the repository root."
         ),
         "input_schema": {
             "type": "object",
@@ -82,9 +89,11 @@ TOOL_SCHEMAS = [
         "name": "grep_glob",
         "description": (
             "Search file contents by regex and/or list files matching a glob. "
-            "With 'pattern': returns path:lineno: line matches. With only 'glob': "
-            "returns the matching file list. Results are capped; narrow the "
-            "pattern if you hit the cap. Provide at least one of the two."
+            "With 'pattern': returns path:lineno: line matches, capped at "
+            f"{MAX_GREP_MATCHES}. With only 'glob': returns the matching file "
+            f"list; over {MAX_GLOB_FILES} files it returns per-directory counts "
+            "instead — narrow the glob to see file names. Search first, then "
+            "read_file with a line range around the hit. Provide at least one of the two."
         ),
         "input_schema": {
             "type": "object",
@@ -140,11 +149,25 @@ def read_file(
         return f"Error: start_line {start} is past the end of the file ({total} lines)", True
     end = min(end, total)
 
-    header = f"[lines {start}-{end} of {total}: {path}]\n"
-    body = "".join(lines[start - 1 : end])
+    # Window: no read_file result ever exceeds MAX_READ_LINES, whether the
+    # range was omitted or explicitly oversized — one invariant, and the
+    # marker teaches the one-turn recovery (pass a range / continue from).
+    served_end = min(end, start + MAX_READ_LINES - 1)
+    marker = ""
+    if served_end < end:
+        if end_line is None:
+            marker = (
+                f"\n... [file has {total} lines; showing {start}-{served_end} — "
+                "pass start_line/end_line for a specific range, or grep_glob to locate it]"
+            )
+        else:
+            marker = f"\n... [range capped at {MAX_READ_LINES} lines — continue from start_line={served_end + 1}]"
+
+    header = f"[lines {start}-{served_end} of {total}: {path}]\n"
+    body = "".join(lines[start - 1 : served_end])
     if len(body) > MAX_READ_CHARS:
         body = body[:MAX_READ_CHARS] + f"\n... [truncated at {MAX_READ_CHARS} chars — use a narrower line range]"
-    return header + body, False
+    return header + body + marker, False
 
 
 def edit_file(workdir: Path, path: str, old_str: str, new_str: str) -> tuple[str, bool]:
@@ -303,13 +326,28 @@ def grep_glob(workdir: Path, pattern: str | None = None, glob: str | None = None
     )
 
     if not pattern:
-        listed = []
-        for p in files:
-            listed.append(str(p.relative_to(root)))
-            if len(listed) >= MAX_GLOB_FILES:
-                listed.append(f"[capped at {MAX_GLOB_FILES} files — narrow the glob]")
-                break
-        return "\n".join(listed) if listed else f"No files match glob: {glob}", False
+        listed = [str(p.relative_to(root)) for p in files]
+        if not listed:
+            return f"No files match glob: {glob}", False
+        if len(listed) <= MAX_GLOB_FILES:
+            return "\n".join(listed), False
+        # Over the cap an alphabetical first-N is a misleading sample; a
+        # per-directory count summary covers the whole tree in fewer tokens
+        # and hands the model its next, narrower glob.
+        dirs: dict[str, int] = {}
+        for rel in listed:
+            parts = PurePosixPath(rel).parts
+            key = "/".join(parts[:2]) if len(parts) > 2 else (parts[0] if len(parts) > 1 else ".")
+            dirs[key] = dirs.get(key, 0) + 1
+        rows = sorted(dirs.items(), key=lambda kv: (-kv[1], kv[0]))
+        out = [
+            f"[{len(listed)} files match — over the {MAX_GLOB_FILES}-file cap; "
+            "counts by directory below — narrow the glob, e.g. 'src/db/**/*.py']"
+        ]
+        out += [f"{d}  {n}" for d, n in rows[:MAX_DIR_ROWS]]
+        if len(rows) > MAX_DIR_ROWS:
+            out.append(f"(+{len(rows) - MAX_DIR_ROWS} more directories)")
+        return "\n".join(out), False
 
     matches = []
     capped = False

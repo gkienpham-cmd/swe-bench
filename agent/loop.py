@@ -27,6 +27,8 @@ PRICING = {
 SYSTEM_PROMPT = (
     "You are a coding agent working in a git repository. "
     "Use the provided tools to inspect the repository and accomplish the task. "
+    "Repositories may be large: locate code with grep_glob, then read only the "
+    "relevant line range — avoid reading whole files. "
     "When you have completed the task, reply with your final answer as plain text."
 )
 
