@@ -13,7 +13,8 @@ from pathlib import Path
 
 import anthropic
 
-from agent.tools import TOOL_SCHEMAS, dispatch
+from agent.sandbox import Sandbox
+from agent.tools import TOOL_SCHEMAS, dispatch, reward_hack_flag
 from agent.tracelog import TraceLog
 
 # $/MTok (input, output) — pricing verified 2026-07-10 against the Claude API
@@ -50,7 +51,10 @@ def usage_dict(usage) -> dict:
     }
 
 
-def run(task: str, model: str, workdir: Path, out_dir: Path, task_id: str, max_turns: int) -> int:
+def run(
+    task: str, model: str, workdir: Path, out_dir: Path, task_id: str, max_turns: int,
+    sandbox_image: str | None = None,
+) -> int:
     # Rule 4c: raw metered API key only. Pin it explicitly so the SDK cannot
     # silently fall back to an OAuth profile or auth token.
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -66,10 +70,28 @@ def run(task: str, model: str, workdir: Path, out_dir: Path, task_id: str, max_t
     print(f"[trajectory: {out_path}]")
 
     log = TraceLog(out_path, task_id=task_id)
+
+    # Per-task container: repo copied in, no host-FS access. Teardown is
+    # guaranteed by try/finally — a crashed run must not leak containers.
+    sandbox = None
+    try:
+        if sandbox_image:
+            sandbox = Sandbox(sandbox_image, workdir)
+            sandbox.start()
+            print(f"[sandbox: image={sandbox_image} container={sandbox.container}]")
+            log.append("meta", {"sandbox_image": sandbox_image, "container": sandbox.container})
+        return _loop(client, log, task, model, workdir, max_turns, sandbox)
+    finally:
+        if sandbox is not None:
+            sandbox.stop()
+
+
+def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, sandbox) -> int:
     log.append("user", task)
     messages = [{"role": "user", "content": task}]
     total_cost = 0.0
     total_usage = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}
+    hack_flags = 0
 
     for turn in range(max_turns):
         response = client.messages.create(
@@ -100,14 +122,18 @@ def run(task: str, model: str, workdir: Path, out_dir: Path, task_id: str, max_t
             print(
                 f"\n[{response.stop_reason} after {turn + 1} turn(s) | "
                 f"tokens in={total_usage['input']} out={total_usage['output']} | "
-                f"cost=${total_cost:.6f} | trajectory={log.path}]"
+                f"cost=${total_cost:.6f} | reward-hack flags={hack_flags} | trajectory={log.path}]"
             )
             return 0
 
         messages.append({"role": "assistant", "content": response.content})
         results = []
         for tu in tool_uses:
-            content, is_error = dispatch(workdir, tu.name, tu.input)
+            flag = reward_hack_flag(tu.name, tu.input)
+            if flag:
+                hack_flags += 1
+                print(f"[REWARD-HACK FLAG: {flag} — {tu.name} on {tu.input.get('path')}]")
+            content, is_error = dispatch(workdir, tu.name, tu.input, sandbox=sandbox)
             results.append(
                 {"type": "tool_result", "tool_use_id": tu.id, "content": content, "is_error": is_error}
             )
@@ -117,10 +143,14 @@ def run(task: str, model: str, workdir: Path, out_dir: Path, task_id: str, max_t
                 tool_name=tu.name,
                 tool_input=tu.input,
                 tool_result_summary=content[:500],
+                reward_hack_flag=flag,
             )
         messages.append({"role": "user", "content": results})
 
-    print(f"[hit max_turns={max_turns} without end_turn | cost=${total_cost:.6f} | trajectory={log.path}]")
+    print(
+        f"[hit max_turns={max_turns} without end_turn | cost=${total_cost:.6f} | "
+        f"reward-hack flags={hack_flags} | trajectory={log.path}]"
+    )
     return 2
 
 
@@ -132,8 +162,16 @@ def main() -> int:
     parser.add_argument("--out-dir", default="results/dev", help="Directory for per-run trajectory files")
     parser.add_argument("--task-id", default="dev-smoke", help="Task id stamped on every trajectory line")
     parser.add_argument("--max-turns", type=int, default=5)
+    parser.add_argument(
+        "--sandbox-image", default=None,
+        help="Run all tools inside a per-task Docker container of this image; "
+        "the repo at --workdir is copied in (no bind mounts, no network).",
+    )
     args = parser.parse_args()
-    return run(args.task, args.model, Path(args.workdir), Path(args.out_dir), args.task_id, args.max_turns)
+    return run(
+        args.task, args.model, Path(args.workdir), Path(args.out_dir), args.task_id,
+        args.max_turns, sandbox_image=args.sandbox_image,
+    )
 
 
 if __name__ == "__main__":

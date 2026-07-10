@@ -34,6 +34,7 @@ class TraceLog:
         tool_result_summary: str | None = None,
         usage: dict | None = None,
         cost_usd: float = 0.0,
+        reward_hack_flag: str | None = None,
     ) -> dict:
         record = {
             "schema_version": SCHEMA_VERSION,
@@ -47,6 +48,9 @@ class TraceLog:
             "tool_result_summary": tool_result_summary,
             "usage": usage if usage is not None else dict(EMPTY_USAGE),
             "cost_usd": cost_usd,
+            # Rule 5: reward-hack signals live on every trajectory line so the
+            # W5 analysis is computable post-hoc over any run ever logged.
+            "reward_hack_flag": reward_hack_flag,
         }
         with self.path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")

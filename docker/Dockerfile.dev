@@ -1,0 +1,13 @@
+# Dev sandbox image (W1 D5-6): python + pytest + git, nothing else.
+# Real SWE-bench task images replace this in W3; the sandbox contract
+# (python3 + git present, repo at /workspace) is what they share.
+#
+# Build:  docker build -t swb-dev -f docker/Dockerfile.dev docker/
+FROM python:3.12-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir pytest==8.3.3
+
+WORKDIR /workspace

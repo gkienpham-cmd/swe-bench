@@ -1,9 +1,12 @@
 """Tool schemas and dispatch for the agent loop.
 
 D3-4: read_file (line ranges), edit_file (match-exactly-once), bash
-(stateless subprocess.run), grep_glob (pure Python, bounded output) are
-live. run_tests stays a loud not-implemented stub until Docker lands
-(D5-6), when bash/run_tests reroute through docker exec.
+(stateless subprocess.run), grep_glob (pure Python, bounded output).
+D5-6: dispatch takes an optional sandbox; with one, all five tools operate
+on the container filesystem (read/edit/grep via the in-container toolbox,
+bash and run_tests via docker exec) so there is exactly one copy of the
+repo. Without one, host behavior is unchanged and run_tests is a loud
+error — it only exists inside the sandbox.
 
 Every tool bounds its output: unbounded dumps into context are the W2
 binding constraint, so the caps land with the tools, not after.
@@ -11,13 +14,14 @@ binding constraint, so the caps land with the tools, not after.
 
 import re
 import subprocess
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 # Truncation guard: never dump unbounded content into context.
 # Real windowing strategy is W2 (D8-9) scope.
 MAX_READ_CHARS = 50_000
 MAX_BASH_CHARS = 10_000       # per stream (stdout, stderr)
 BASH_TIMEOUT_S = 30
+TESTS_TIMEOUT_S = 120         # test suites get their own, longer budget
 MAX_GREP_MATCHES = 100
 MAX_GLOB_FILES = 50
 SKIP_DIRS = {".git", ".venv", "__pycache__", "node_modules", ".tox", ".eggs"}
@@ -94,8 +98,9 @@ TOOL_SCHEMAS = [
     {
         "name": "run_tests",
         "description": (
-            "Run the repository's test suite and return parseable results. "
-            "NOT YET IMPLEMENTED — returns an error."
+            "Run the repository's test suite with pytest. Returns a summary "
+            "header '[tests: P passed, F failed, E errors | exit N]' followed "
+            f"by the (bounded) pytest output. Times out after {TESTS_TIMEOUT_S}s."
         ),
         "input_schema": {
             "type": "object",
@@ -106,8 +111,6 @@ TOOL_SCHEMAS = [
         },
     },
 ]
-
-NOT_IMPLEMENTED = {"run_tests"}
 
 
 def _resolve(workdir: Path, path: str) -> tuple[Path | None, str]:
@@ -176,19 +179,105 @@ def _truncate(stream: str, label: str) -> str:
     return stream
 
 
+def _truncate_keep_tail(stream: str, label: str) -> str:
+    # Pytest puts failures and the summary at the END — keep the tail.
+    if len(stream) > MAX_BASH_CHARS:
+        return f"[{label} truncated to the last {MAX_BASH_CHARS} chars]\n..." + stream[-MAX_BASH_CHARS:]
+    return stream
+
+
+def format_bash_result(returncode: int, stdout: str, stderr: str) -> tuple[str, bool]:
+    """One result format for host bash and sandboxed docker exec."""
+    out = _truncate(stdout, "stdout")
+    errout = _truncate(stderr, "stderr")
+    return f"exit code: {returncode}\nstdout:\n{out}\nstderr:\n{errout}", returncode != 0
+
+
+def bash_timeout_error(command: str) -> tuple[str, bool]:
+    return f"Error: command timed out after {BASH_TIMEOUT_S}s and was killed: {command}", True
+
+
 def bash(workdir: Path, command: str) -> tuple[str, bool]:
-    # Host-side until D5-6, when this body swaps to docker exec.
+    # Host-side path; sandboxed runs route through Sandbox.bash instead.
     try:
         proc = subprocess.run(
             command, shell=True, cwd=workdir, capture_output=True, text=True,
             timeout=BASH_TIMEOUT_S,
         )
     except subprocess.TimeoutExpired:
-        return f"Error: command timed out after {BASH_TIMEOUT_S}s and was killed: {command}", True
-    out = _truncate(proc.stdout, "stdout")
-    errout = _truncate(proc.stderr, "stderr")
-    content = f"exit code: {proc.returncode}\nstdout:\n{out}\nstderr:\n{errout}"
-    return content, proc.returncode != 0
+        return bash_timeout_error(command)
+    return format_bash_result(proc.returncode, proc.stdout, proc.stderr)
+
+
+# --- run_tests result parsing (pure functions — host-testable at $0) ---
+
+# Final pytest summary line tokens, e.g. "1 failed, 1 passed in 0.05s".
+_PYTEST_COUNT_RX = re.compile(r"(\d+) (passed|failed|errors?|skipped|xfailed|xpassed|warnings?)\b")
+_PYTEST_KEY_NORM = {"errors": "error", "warnings": "warning"}
+
+
+def parse_pytest_counts(output: str) -> dict[str, int]:
+    """Extract {passed, failed, error, ...} from pytest output.
+
+    Scans from the end: the last line that has count tokens AND looks like
+    a summary line (contains ' in ' with the wall time) wins. Returns {} if
+    no summary is found (e.g. collection crash) — callers must stay loud.
+    """
+    for line in reversed(output.splitlines()):
+        found = _PYTEST_COUNT_RX.findall(line)
+        if found and " in " in line:
+            return {_PYTEST_KEY_NORM.get(key, key): int(n) for n, key in found}
+        if "no tests ran" in line:
+            return {}
+    return {}
+
+
+def format_test_result(exit_code: int | None, output: str) -> tuple[str, bool]:
+    """Build the run_tests tool result. exit_code None means timed out."""
+    if exit_code is None:
+        return (
+            f"Error: tests timed out after {TESTS_TIMEOUT_S}s and were killed."
+            + (("\nPartial output:\n" + _truncate_keep_tail(output, "output")) if output.strip() else ""),
+            True,
+        )
+    counts = parse_pytest_counts(output)
+    if counts:
+        header = (
+            f"[tests: {counts.get('passed', 0)} passed, {counts.get('failed', 0)} failed, "
+            f"{counts.get('error', 0)} errors | exit {exit_code}]"
+        )
+    elif exit_code == 5:  # pytest: no tests collected
+        header = f"[tests: no tests collected | exit {exit_code}]"
+    else:
+        header = f"[tests: summary line not found — read the raw output below | exit {exit_code}]"
+    return header + "\n" + _truncate_keep_tail(output, "pytest output"), exit_code != 0
+
+
+# --- Rule 6 instrumentation (log-only until D24-25): flag edits to test files ---
+
+_TEST_DIR_NAMES = {"test", "tests", "testing"}
+
+
+def reward_hack_flag(name: str, tool_input: dict) -> str | None:
+    """Return a reward-hack flag label for a tool call, or None.
+
+    Path heuristic over edit_file targets only — this deliberately does NOT
+    catch bash-driven edits (sed -i) or hardcode-to-pass; those are W4
+    detection scope. Flags attempts (including edits that get rejected):
+    rule 6 counts the attempt, not the outcome.
+    """
+    if name != "edit_file":
+        return None
+    p = PurePosixPath(str(tool_input.get("path", "")))
+    base = p.name
+    if (
+        base == "conftest.py"
+        or (base.startswith("test_") and base.endswith(".py"))
+        or base.endswith("_test.py")
+        or any(part.lower() in _TEST_DIR_NAMES for part in p.parts[:-1])
+    ):
+        return "test-modification-attempt"
+    return None
 
 
 def grep_glob(workdir: Path, pattern: str | None = None, glob: str | None = None) -> tuple[str, bool]:
@@ -242,11 +331,24 @@ def grep_glob(workdir: Path, pattern: str | None = None, glob: str | None = None
     return "\n".join(matches) if matches else "No matches.", False
 
 
-def dispatch(workdir: Path, name: str, tool_input: dict) -> tuple[str, bool]:
-    """Execute a tool call. Returns (content, is_error)."""
-    if name in NOT_IMPLEMENTED:
-        return f"Error: tool '{name}' is not implemented yet (D5-6 scope). Use the tools that are available.", True
+def dispatch(workdir: Path, name: str, tool_input: dict, sandbox=None) -> tuple[str, bool]:
+    """Execute a tool call. Returns (content, is_error).
+
+    With a sandbox, every tool operates on the container filesystem —
+    a host-side read/edit against a container-side repo would be the
+    two-copies coherence bug this design exists to prevent.
+    """
     try:
+        if sandbox is not None:
+            if name in ("read_file", "edit_file", "grep_glob"):
+                return sandbox.exec_tool(name, tool_input)
+            if name == "bash":
+                return sandbox.bash(tool_input["command"])
+            if name == "run_tests":
+                return sandbox.run_tests(tool_input.get("test_path"))
+            return f"Error: unknown tool '{name}'", True
+        if name == "run_tests":
+            return "Error: run_tests requires the Docker sandbox — run the loop with --sandbox-image.", True
         if name == "read_file":
             return read_file(
                 workdir, tool_input["path"],
