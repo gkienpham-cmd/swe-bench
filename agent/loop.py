@@ -8,6 +8,7 @@ per turn from usage fields and printed at exit ($/task is a first-class KPI).
 import argparse
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import anthropic
@@ -49,7 +50,7 @@ def usage_dict(usage) -> dict:
     }
 
 
-def run(task: str, model: str, workdir: Path, out_path: Path, max_turns: int) -> int:
+def run(task: str, model: str, workdir: Path, out_dir: Path, task_id: str, max_turns: int) -> int:
     # Rule 4c: raw metered API key only. Pin it explicitly so the SDK cannot
     # silently fall back to an OAuth profile or auth token.
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -58,7 +59,13 @@ def run(task: str, model: str, workdir: Path, out_path: Path, max_turns: int) ->
         return 1
     client = anthropic.Anthropic(api_key=api_key)
 
-    log = TraceLog(out_path, task_id="dev-smoke")
+    # One file per run: a failed run can never leave stale steps in a later
+    # run's trajectory (measured D1 failure).
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
+    out_path = out_dir / f"{stamp}_{task_id}.jsonl"
+    print(f"[trajectory: {out_path}]")
+
+    log = TraceLog(out_path, task_id=task_id)
     log.append("user", task)
     messages = [{"role": "user", "content": task}]
     total_cost = 0.0
@@ -122,10 +129,11 @@ def main() -> int:
     parser.add_argument("--task", required=True, help="Task prompt for the agent")
     parser.add_argument("--model", default="claude-haiku-4-5")
     parser.add_argument("--workdir", default=".", help="Repository root the tools operate in")
-    parser.add_argument("--out", default="results/2026-07-10_dev-smoke/trajectory.jsonl")
+    parser.add_argument("--out-dir", default="results/dev", help="Directory for per-run trajectory files")
+    parser.add_argument("--task-id", default="dev-smoke", help="Task id stamped on every trajectory line")
     parser.add_argument("--max-turns", type=int, default=5)
     args = parser.parse_args()
-    return run(args.task, args.model, Path(args.workdir), Path(args.out), args.max_turns)
+    return run(args.task, args.model, Path(args.workdir), Path(args.out_dir), args.task_id, args.max_turns)
 
 
 if __name__ == "__main__":
