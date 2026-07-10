@@ -1,6 +1,7 @@
 """Raw Messages API tool-use loop — no frameworks (W1 D1–2).
 
-model -> tool call -> observation -> repeat, until end_turn or the turn cap.
+model -> tool call -> observation -> repeat, until end_turn, the turn cap,
+or the hard cost ceiling (W2 D8-9 budget tracker).
 Every step is appended to a JSONL trajectory via tracelog. Cost is computed
 per turn from usage fields and printed at exit ($/task is a first-class KPI).
 """
@@ -51,9 +52,39 @@ def usage_dict(usage) -> dict:
     }
 
 
+class BudgetTracker:
+    """Per-turn token/cost accumulator with a hard cost ceiling (W2 D8-9).
+
+    add() after every API response; over_budget() decides whether the loop
+    may start another turn. The check is post-turn — a request in flight
+    cannot be un-spent — so actual spend can overshoot the ceiling by at
+    most one turn's cost. A run that finishes cleanly on the turn that
+    crosses the ceiling still counts as clean: the ceiling stops further
+    spend, it does not retroactively fail completed work.
+    """
+
+    def __init__(self, model: str, max_cost_usd: float | None = None):
+        self.model = model
+        self.max_cost_usd = max_cost_usd
+        self.total_cost = 0.0
+        self.total_usage = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}
+        self.turns = 0
+
+    def add(self, usage) -> float:
+        cost = turn_cost(self.model, usage)
+        self.total_cost += cost
+        for k, v in usage_dict(usage).items():
+            self.total_usage[k] += v
+        self.turns += 1
+        return cost
+
+    def over_budget(self) -> bool:
+        return self.max_cost_usd is not None and self.total_cost >= self.max_cost_usd
+
+
 def run(
     task: str, model: str, workdir: Path, out_dir: Path, task_id: str, max_turns: int,
-    sandbox_image: str | None = None,
+    sandbox_image: str | None = None, max_cost_usd: float | None = None,
 ) -> int:
     # Rule 4c: raw metered API key only. Pin it explicitly so the SDK cannot
     # silently fall back to an OAuth profile or auth token.
@@ -80,17 +111,16 @@ def run(
             sandbox.start()
             print(f"[sandbox: image={sandbox_image} container={sandbox.container}]")
             log.append("meta", {"sandbox_image": sandbox_image, "container": sandbox.container})
-        return _loop(client, log, task, model, workdir, max_turns, sandbox)
+        budget = BudgetTracker(model, max_cost_usd=max_cost_usd)
+        return _loop(client, log, task, model, workdir, max_turns, sandbox, budget)
     finally:
         if sandbox is not None:
             sandbox.stop()
 
 
-def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, sandbox) -> int:
+def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, sandbox, budget) -> int:
     log.append("user", task)
     messages = [{"role": "user", "content": task}]
-    total_cost = 0.0
-    total_usage = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}
     hack_flags = 0
 
     for turn in range(max_turns):
@@ -101,10 +131,7 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
             tools=TOOL_SCHEMAS,
             messages=messages,
         )
-        cost = turn_cost(model, response.usage)
-        total_cost += cost
-        for k, v in usage_dict(response.usage).items():
-            total_usage[k] += v
+        cost = budget.add(response.usage)
 
         tool_uses = [b for b in response.content if b.type == "tool_use"]
         log.append(
@@ -121,10 +148,27 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
             print(final)
             print(
                 f"\n[{response.stop_reason} after {turn + 1} turn(s) | "
-                f"tokens in={total_usage['input']} out={total_usage['output']} | "
-                f"cost=${total_cost:.6f} | reward-hack flags={hack_flags} | trajectory={log.path}]"
+                f"tokens in={budget.total_usage['input']} out={budget.total_usage['output']} | "
+                f"cost=${budget.total_cost:.6f} | reward-hack flags={hack_flags} | trajectory={log.path}]"
             )
             return 0
+
+        # Hard cost ceiling: halt before dispatching tools — their results
+        # would only feed an API call we are not going to make. The emitted
+        # tool calls are already on the assistant trajectory line, so the
+        # halt loses no post-hoc analysis data.
+        if budget.over_budget():
+            log.append("meta", {
+                "budget_ceiling_hit": True,
+                "max_cost_usd": budget.max_cost_usd,
+                "total_cost_usd": budget.total_cost,
+                "turns": budget.turns,
+            })
+            print(
+                f"[BUDGET CEILING HIT: cost=${budget.total_cost:.6f} >= max=${budget.max_cost_usd:.6f} "
+                f"after {budget.turns} turn(s) | reward-hack flags={hack_flags} | trajectory={log.path}]"
+            )
+            return 2
 
         messages.append({"role": "assistant", "content": response.content})
         results = []
@@ -148,7 +192,7 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
         messages.append({"role": "user", "content": results})
 
     print(
-        f"[hit max_turns={max_turns} without end_turn | cost=${total_cost:.6f} | "
+        f"[hit max_turns={max_turns} without end_turn | cost=${budget.total_cost:.6f} | "
         f"reward-hack flags={hack_flags} | trajectory={log.path}]"
     )
     return 2
@@ -161,7 +205,15 @@ def main() -> int:
     parser.add_argument("--workdir", default=".", help="Repository root the tools operate in")
     parser.add_argument("--out-dir", default="results/dev", help="Directory for per-run trajectory files")
     parser.add_argument("--task-id", default="dev-smoke", help="Task id stamped on every trajectory line")
-    parser.add_argument("--max-turns", type=int, default=5)
+    # Default 10, not 5: the W1 gate measured a 6-turn minimum on even the
+    # toy task (a default-5 run solved it, then died before end_turn —
+    # results/2026-07-11_w1-gate/summary.md). Real caps are W2 D10-11 scope.
+    parser.add_argument("--max-turns", type=int, default=10)
+    parser.add_argument(
+        "--max-cost-usd", type=float, default=None,
+        help="Hard cost ceiling for the run; the loop halts (exit 2) instead of "
+        "starting another turn once total cost reaches it. Default: no ceiling.",
+    )
     parser.add_argument(
         "--sandbox-image", default=None,
         help="Run all tools inside a per-task Docker container of this image; "
@@ -170,7 +222,7 @@ def main() -> int:
     args = parser.parse_args()
     return run(
         args.task, args.model, Path(args.workdir), Path(args.out_dir), args.task_id,
-        args.max_turns, sandbox_image=args.sandbox_image,
+        args.max_turns, sandbox_image=args.sandbox_image, max_cost_usd=args.max_cost_usd,
     )
 
 

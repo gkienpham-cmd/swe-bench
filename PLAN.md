@@ -24,6 +24,7 @@ Goal: a looping agent that can edit a file and run a test inside Docker.
 - **D3–4:** `read_file` with line ranges; `bash` via `subprocess.run` (stateless per action, so it swaps to `docker exec` trivially); `edit_file` as string-replace with uniqueness validation (reject if the target appears 0 or >1 times); grep/glob search; per-turn token counting. *Done when:* the agent locates and edits a target string in a scratch repo without a silent wrong edit.
 - **D5–6:** Docker sandbox; route `bash` and `run_tests` through `docker exec` into a per-task container; `run_tests` with parseable output; wire the full loop (model → tool call → observation → repeat until done or caps). *Done when:* the container has no host-filesystem access and a test result round-trips through the loop.
 - **D7:** Buffer. **Gate W1: the agent solves a hand-made toy bug in a sandboxed repo end-to-end.** Retro.
+- ✅ **Gate W1: PASS 2026-07-11** — n=3, all 6 turns, $0.0151 ± 0.0004/run, 0 reward-hack flags; evidence in `results/2026-07-11_w1-gate/`.
 
 ## Week 2 — Context management, caps, and the trajectory schema
 
