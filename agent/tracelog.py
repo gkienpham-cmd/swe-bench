@@ -1,0 +1,79 @@
+"""Append-only JSONL trajectory log — one line per agent step.
+
+Draft schema ("0-draft") is a superset of the v1 schema frozen in Week 2
+(schemas/trajectory.schema.json). Raw tool calls and results are logged in
+full so the Week 5 reward-hacking analysis stays computable post-hoc over
+any trajectory ever written (rule 5).
+"""
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+SCHEMA_VERSION = "0-draft"
+
+EMPTY_USAGE = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}
+
+
+class TraceLog:
+    """Appends one JSON line per step; never truncates an existing file."""
+
+    def __init__(self, path: str | Path, task_id: str):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.task_id = task_id
+        self.step = 0
+
+    def append(
+        self,
+        role: str,
+        content,
+        *,
+        tool_name: str | None = None,
+        tool_input: dict | None = None,
+        tool_result_summary: str | None = None,
+        usage: dict | None = None,
+        cost_usd: float = 0.0,
+    ) -> dict:
+        record = {
+            "schema_version": SCHEMA_VERSION,
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "task_id": self.task_id,
+            "step": self.step,
+            "role": role,
+            "content": content,
+            "tool_name": tool_name,
+            "tool_input": tool_input,
+            "tool_result_summary": tool_result_summary,
+            "usage": usage if usage is not None else dict(EMPTY_USAGE),
+            "cost_usd": cost_usd,
+        }
+        with self.path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+        self.step += 1
+        return record
+
+
+if __name__ == "__main__":
+    # Smoke: two appends, then re-open the file and prove every line
+    # round-trips json.loads and the file only ever grows.
+    import sys
+
+    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results/tracelog-smoke.jsonl")
+    before = path.stat().st_size if path.exists() else 0
+
+    log = TraceLog(path, task_id="smoke")
+    log.append("user", "smoke task prompt")
+    log.append(
+        "assistant",
+        [{"type": "tool_use", "name": "read_file", "input": {"path": "PLAN.md"}}],
+        tool_name="read_file",
+        tool_input={"path": "PLAN.md"},
+        usage={"input": 1200, "output": 45, "cache_read": 0, "cache_write": 0},
+        cost_usd=0.001425,
+    )
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    records = [json.loads(l) for l in lines]  # raises if any line is invalid
+    assert path.stat().st_size > before, "file did not grow — truncation bug"
+    print(f"ok: {len(records)} valid lines in {path} (grew from {before} bytes)")
