@@ -1,0 +1,11 @@
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+*.pyc
+
+# Secrets — never commit; public repo
+.env
+
+# OS
+.DS_Store
