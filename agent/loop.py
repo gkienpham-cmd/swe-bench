@@ -33,6 +33,35 @@ SYSTEM_PROMPT = (
     "When you have completed the task, reply with your final answer as plain text."
 )
 
+# Prompt caching (W2 D12-13). Breakpoint 1: the system block caches
+# tools+system together (render order is tools -> system -> messages).
+# Measured (analysis/measure_prefix.py): tools+system is ~1,372 tok, UNDER
+# Haiku 4.5's 4,096-tok minimum cacheable prefix — so this breakpoint never
+# caches by itself on Haiku; it costs nothing (below-minimum markers are
+# silently ignored) and is kept for models with lower minimums. The working
+# breakpoint is the moving conversation marker (_move_cache_marker), whose
+# cumulative prefix (tools+system+messages) crosses 4,096 within a few turns.
+SYSTEM_BLOCKS = [
+    {"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}
+]
+
+
+def _move_cache_marker(messages: list) -> None:
+    """Breakpoint 2: strip cache_control from every user tool_result block,
+    then mark the last block of the newest user message. One moving marker +
+    the system marker = 2 breakpoints (max 4). Old prefixes stay readable —
+    markers are write points; removing one evicts nothing. Assistant content
+    is SDK objects and never carries markers."""
+    last_user = None
+    for msg in messages:
+        if msg.get("role") == "user" and isinstance(msg.get("content"), list):
+            for block in msg["content"]:
+                if isinstance(block, dict):
+                    block.pop("cache_control", None)
+            last_user = msg
+    if last_user is not None:
+        last_user["content"][-1]["cache_control"] = {"type": "ephemeral"}
+
 
 def turn_cost(model: str, usage) -> float:
     in_price, out_price = PRICING[model]
@@ -116,8 +145,21 @@ def run(
             print(f"[sandbox: image={sandbox_image} container={sandbox.container}]")
             log.append("meta", {"sandbox_image": sandbox_image, "container": sandbox.container})
         budget = BudgetTracker(model, max_cost_usd=max_cost_usd)
-        return _loop(client, log, task, model, workdir, max_turns, sandbox, budget,
-                     compact_at_tokens=compact_at_tokens)
+        rc = _loop(client, log, task, model, workdir, max_turns, sandbox, budget,
+                   compact_at_tokens=compact_at_tokens)
+        # Schema v1: persist the final in-container patch on EVERY exit path
+        # (_loop returns on clean finish, cost ceiling, and max-turns alike).
+        # Logged as a meta line AND written as a .patch beside the trajectory
+        # — this is the W3 patch-extraction path. Host-mode runs log null.
+        diff = sandbox.git_diff() if sandbox is not None else None
+        log.append("meta", {"final_git_diff": diff})
+        if diff:
+            patch_path = out_path.with_suffix(".patch")
+            patch_path.write_text(diff, encoding="utf-8")
+            print(f"[patch: {patch_path} ({len(diff)} bytes)]")
+        elif sandbox is not None:
+            print("[patch: empty or extraction failed — final_git_diff meta line logged]")
+        return rc
     finally:
         if sandbox is not None:
             sandbox.stop()
@@ -133,7 +175,7 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
         response = client.messages.create(
             model=model,
             max_tokens=4096,
-            system=SYSTEM_PROMPT,
+            system=SYSTEM_BLOCKS,
             tools=TOOL_SCHEMAS,
             messages=messages,
         )
@@ -197,6 +239,7 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
                 reward_hack_flag=flag,
             )
         messages.append({"role": "user", "content": results})
+        _move_cache_marker(messages)
 
         # Compaction check, once per turn. Last-response usage measures the
         # prompt BEFORE this turn's assistant content and tool results were

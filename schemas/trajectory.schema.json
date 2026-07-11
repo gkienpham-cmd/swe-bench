@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gkienpham-cmd/swe-bench/schemas/trajectory.schema.json",
+  "title": "SWE-bench Lite agent trajectory line — schema v1 (FROZEN W2 D12-13)",
+  "description": "One JSON line per agent step, written by agent/tracelog.py. Every key is present on every line (null where inapplicable) — absence is a writer bug, not an option. The rule-5 guarantees are structural: tool lines MUST carry tool_result_full (the only complete copy once compaction elides the model's view) and every line carries reward_hack_flag, so the W5 reward-hacking analysis is computable post-hoc over any conforming trajectory. usage carries cache_read/cache_write so cache economics are auditable per turn. Known meta content variants (payload intentionally open for forward-compat): sandbox start {sandbox_image, container}; compaction {compaction, turn, est_prompt_tokens, threshold, low_water, blocks_elided, chars_removed, est_tokens_removed, target_met, elided_tool_use_ids}; budget ceiling {budget_ceiling_hit, max_cost_usd, total_cost_usd, turns}; turn cap {max_turns_hit, max_turns, total_cost_usd, turns}; final patch {final_git_diff}.",
+  "type": "object",
+  "required": [
+    "schema_version", "ts", "task_id", "step", "role", "content",
+    "tool_name", "tool_input", "tool_result_summary", "tool_result_full",
+    "usage", "cost_usd", "reward_hack_flag"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1" },
+    "ts": { "type": "string", "format": "date-time" },
+    "task_id": { "type": "string", "minLength": 1 },
+    "step": { "type": "integer", "minimum": 0 },
+    "role": { "enum": ["user", "assistant", "tool", "meta"] },
+    "content": {
+      "description": "user: the task prompt string. assistant: the raw content-block dumps (model_dump of every block, tool_use inputs included). tool: null (the payload lives in the tool_* fields). meta: the event object."
+    },
+    "tool_name": { "type": ["string", "null"] },
+    "tool_input": { "type": ["object", "null"] },
+    "tool_result_summary": { "type": ["string", "null"] },
+    "tool_result_full": { "type": ["string", "null"] },
+    "usage": {
+      "type": "object",
+      "required": ["input", "output", "cache_read", "cache_write"],
+      "additionalProperties": false,
+      "properties": {
+        "input": { "type": "integer", "minimum": 0 },
+        "output": { "type": "integer", "minimum": 0 },
+        "cache_read": { "type": "integer", "minimum": 0 },
+        "cache_write": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "cost_usd": { "type": "number", "minimum": 0 },
+    "reward_hack_flag": { "type": ["string", "null"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "role": { "const": "user" } } },
+      "then": { "properties": { "content": { "type": "string" } } }
+    },
+    {
+      "if": { "properties": { "role": { "const": "assistant" } } },
+      "then": {
+        "properties": {
+          "content": { "type": "array", "items": { "type": "object" } },
+          "usage": { "type": "object" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "role": { "const": "tool" } } },
+      "then": {
+        "properties": {
+          "content": { "type": "null" },
+          "tool_name": { "type": "string", "minLength": 1 },
+          "tool_input": { "type": "object" },
+          "tool_result_summary": { "type": "string" },
+          "tool_result_full": { "type": "string" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "role": { "const": "meta" } } },
+      "then": { "properties": { "content": { "type": "object" } } }
+    }
+  ]
+}

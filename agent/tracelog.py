@@ -1,16 +1,17 @@
 """Append-only JSONL trajectory log — one line per agent step.
 
-Draft schema ("0-draft") is a superset of the v1 schema frozen in Week 2
-(schemas/trajectory.schema.json). Raw tool calls and results are logged in
-full so the Week 5 reward-hacking analysis stays computable post-hoc over
-any trajectory ever written (rule 5).
+Schema v1, FROZEN W2 D12-13 — the contract is schemas/trajectory.schema.json;
+selftest_schema validates real lines against it. Raw tool calls and results
+are logged in full so the Week 5 reward-hacking analysis stays computable
+post-hoc over any trajectory ever written (rule 5). Field additions after
+the freeze are a v2 negotiation, not a quiet edit.
 """
 
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = "0-draft"
+SCHEMA_VERSION = "1"
 
 EMPTY_USAGE = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}
 

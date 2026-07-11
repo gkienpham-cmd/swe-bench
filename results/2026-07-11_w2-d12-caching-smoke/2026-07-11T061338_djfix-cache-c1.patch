@@ -1,0 +1,13 @@
+diff --git a/django/db/models/query.py b/django/db/models/query.py
+index 3b7b6b8..2d9bcee 100644
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -707,7 +707,7 @@ class QuerySet(AltersData):
+                 "%s matching query does not exist." % self.model._meta.object_name
+             )
+         raise self.model.MultipleObjectsReturned(
+-            "get() returned more then one %s -- it returned %s!"
++            "get() returned more than one %s -- it returned %s!"
+             % (
+                 self.model._meta.object_name,
+                 num if not limit or num < limit else "more than %s" % (limit - 1),

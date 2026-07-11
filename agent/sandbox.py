@@ -96,6 +96,20 @@ class Sandbox:
             capture_output=True, text=True, timeout=DOCKER_TIMEOUT_S,
         )
 
+    def git_diff(self) -> str | None:
+        """Final in-container patch vs the baseline commit (schema v1 freeze,
+        W3 patch-extraction path). `git add -A` first: plain `git diff`
+        misses files the agent CREATED (untracked), and a patch that silently
+        drops new files is the silent-wrong-edit class again, at extraction
+        time. Mutating the index is fine — this runs at end-of-run and the
+        container is about to be destroyed. Returns None (never raises) on
+        failure: patch capture must not turn a finished run into a crash."""
+        try:
+            proc = self._exec_raw("git add -A && git diff --cached", DOCKER_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            return None
+        return proc.stdout if proc.returncode == 0 else None
+
     # --- tool surface (each returns (content, is_error) like host tools) ---
 
     def bash(self, command: str) -> tuple[str, bool]:

@@ -100,6 +100,14 @@ def main() -> int:
            and "+    return price * (1 - percent / 100)" in content,
            "git diff against the baseline commit yields the patch")
 
+        # --- git_diff(): schema-v1 patch extraction, incl. untracked files ---
+        sb.bash("printf 'new = True\\n' > calc/newmod.py")
+        patch = sb.git_diff()
+        ok(patch is not None
+           and "calc/newmod.py" in patch and "+new = True" in patch
+           and "-    return price * (1 + percent / 100)" in patch,
+           "git_diff() captures edits AND agent-created (untracked) files in one patch")
+
     gone = subprocess.run(["docker", "inspect", sb.container], capture_output=True).returncode != 0
     ok(gone, "container removed on clean context exit")
 
