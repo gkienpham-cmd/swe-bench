@@ -14,6 +14,7 @@ from pathlib import Path
 
 import anthropic
 
+from agent.compact import compact_messages, estimate_tokens, prompt_tokens
 from agent.sandbox import Sandbox
 from agent.tools import TOOL_SCHEMAS, dispatch, reward_hack_flag
 from agent.tracelog import TraceLog
@@ -87,6 +88,7 @@ class BudgetTracker:
 def run(
     task: str, model: str, workdir: Path, out_dir: Path, task_id: str, max_turns: int,
     sandbox_image: str | None = None, max_cost_usd: float | None = None,
+    compact_at_tokens: int | None = None,
 ) -> int:
     # Rule 4c: raw metered API key only. Pin it explicitly so the SDK cannot
     # silently fall back to an OAuth profile or auth token.
@@ -114,13 +116,15 @@ def run(
             print(f"[sandbox: image={sandbox_image} container={sandbox.container}]")
             log.append("meta", {"sandbox_image": sandbox_image, "container": sandbox.container})
         budget = BudgetTracker(model, max_cost_usd=max_cost_usd)
-        return _loop(client, log, task, model, workdir, max_turns, sandbox, budget)
+        return _loop(client, log, task, model, workdir, max_turns, sandbox, budget,
+                     compact_at_tokens=compact_at_tokens)
     finally:
         if sandbox is not None:
             sandbox.stop()
 
 
-def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, sandbox, budget) -> int:
+def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, sandbox, budget,
+          compact_at_tokens: int | None = None) -> int:
     log.append("user", task)
     messages = [{"role": "user", "content": task}]
     hack_flags = 0
@@ -189,10 +193,45 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
                 tool_name=tu.name,
                 tool_input=tu.input,
                 tool_result_summary=content[:500],
+                tool_result_full=content,
                 reward_hack_flag=flag,
             )
         messages.append({"role": "user", "content": results})
 
+        # Compaction check, once per turn. Last-response usage measures the
+        # prompt BEFORE this turn's assistant content and tool results were
+        # appended — one turn stale, and a single multi-read turn can add
+        # tens of k tokens — so estimate the just-appended tail on top.
+        if compact_at_tokens:
+            est_prompt = (
+                prompt_tokens(response.usage) + response.usage.output_tokens
+                + estimate_tokens(sum(len(r["content"]) for r in results))
+            )
+            if est_prompt >= compact_at_tokens:
+                low_water = compact_at_tokens // 2
+                stats = compact_messages(messages, target_tokens=est_prompt - low_water, turn=turn)
+                log.append("meta", {
+                    "compaction": True,
+                    "turn": turn,
+                    "est_prompt_tokens": est_prompt,
+                    "threshold": compact_at_tokens,
+                    "low_water": low_water,
+                    **stats,
+                })
+                print(
+                    f"[COMPACTION at turn {turn}: ~{est_prompt} tok >= {compact_at_tokens} -> "
+                    f"elided {stats['blocks_elided']} blocks, ~{stats['est_tokens_removed']} tok removed"
+                    f"{'' if stats['target_met'] else ' (target NOT met — un-elidable floor)'}]"
+                )
+
+    # Meta-line parity with the cost-ceiling exit: both cap exits must be
+    # classifiable post-hoc as `budget-cap-exit` from the trajectory alone.
+    log.append("meta", {
+        "max_turns_hit": True,
+        "max_turns": max_turns,
+        "total_cost_usd": budget.total_cost,
+        "turns": budget.turns,
+    })
     print(
         f"[hit max_turns={max_turns} without end_turn | cost=${budget.total_cost:.6f} | "
         f"reward-hack flags={hack_flags} | trajectory={log.path}]"
@@ -207,14 +246,25 @@ def main() -> int:
     parser.add_argument("--workdir", default=".", help="Repository root the tools operate in")
     parser.add_argument("--out-dir", default="results/dev", help="Directory for per-run trajectory files")
     parser.add_argument("--task-id", default="dev-smoke", help="Task id stamped on every trajectory line")
-    # Default 10, not 5: the W1 gate measured a 6-turn minimum on even the
-    # toy task (a default-5 run solved it, then died before end_turn —
-    # results/2026-07-11_w1-gate/summary.md). Real caps are W2 D10-11 scope.
-    parser.add_argument("--max-turns", type=int, default=10)
+    # Per-task caps (W2 D10-11): ~40 steps / ~$1, tighter than mini-SWE-agent's
+    # 250/$3 defaults. Grounded in analysis/measure_context.py: at the 4k
+    # tok/turn stress growth an uncapped, uncompacted run costs $3.69 input
+    # over 40 turns; with 25k-threshold compaction the same run is ~$0.77, so
+    # $1 binds on turns, not mid-task. (The W1 gate measured a 6-turn minimum
+    # on even the toy task — results/2026-07-11_w1-gate/summary.md.)
+    parser.add_argument("--max-turns", type=int, default=40)
     parser.add_argument(
-        "--max-cost-usd", type=float, default=None,
+        "--max-cost-usd", type=float, default=1.00,
         help="Hard cost ceiling for the run; the loop halts (exit 2) instead of "
-        "starting another turn once total cost reaches it. Default: no ceiling.",
+        "starting another turn once total cost reaches it. Default $1.00; "
+        "pass 0 or a negative value to disable the ceiling.",
+    )
+    parser.add_argument(
+        "--compact-at-tokens", type=int, default=25_000,
+        help="Compact the conversation (elide old tool results) when the "
+        "estimated prompt reaches this many tokens, down to half of it. "
+        "Default 25000 (analysis/measure_context.py: keeps a 40-turn run "
+        "under the $1 cap even at 4k tok/turn growth). Pass 0 to disable.",
     )
     parser.add_argument(
         "--sandbox-image", default=None,
@@ -222,9 +272,12 @@ def main() -> int:
         "the repo at --workdir is copied in (no bind mounts, no network).",
     )
     args = parser.parse_args()
+    # <=0 means "no ceiling" now that the default is a real number.
+    max_cost = args.max_cost_usd if args.max_cost_usd and args.max_cost_usd > 0 else None
     return run(
         args.task, args.model, Path(args.workdir), Path(args.out_dir), args.task_id,
-        args.max_turns, sandbox_image=args.sandbox_image, max_cost_usd=args.max_cost_usd,
+        args.max_turns, sandbox_image=args.sandbox_image, max_cost_usd=max_cost,
+        compact_at_tokens=args.compact_at_tokens if args.compact_at_tokens > 0 else None,
     )
 
 

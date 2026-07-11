@@ -32,6 +32,7 @@ class TraceLog:
         tool_name: str | None = None,
         tool_input: dict | None = None,
         tool_result_summary: str | None = None,
+        tool_result_full: str | None = None,
         usage: dict | None = None,
         cost_usd: float = 0.0,
         reward_hack_flag: str | None = None,
@@ -46,6 +47,11 @@ class TraceLog:
             "tool_name": tool_name,
             "tool_input": tool_input,
             "tool_result_summary": tool_result_summary,
+            # Rule 5 / schema v1: the FULL result. Compaction (D10-11) elides
+            # results from the model's context; this field is then the only
+            # complete copy, so post-hoc analysis never depends on what the
+            # model still saw.
+            "tool_result_full": tool_result_full,
             "usage": usage if usage is not None else dict(EMPTY_USAGE),
             "cost_usd": cost_usd,
             # Rule 5: reward-hack signals live on every trajectory line so the
