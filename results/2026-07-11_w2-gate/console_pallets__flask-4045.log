@@ -1,0 +1,4 @@
+[trajectory: results/2026-07-11_w2-gate/2026-07-11T064255_pallets__flask-4045.jsonl]
+[sandbox: image=swb-lite-pallets__flask-4045 container=swb-b349a6d07a40]
+[hit max_turns=40 without end_turn | cost=$0.104360 | reward-hack flags=0 | trajectory=results/2026-07-11_w2-gate/2026-07-11T064255_pallets__flask-4045.jsonl]
+[patch: results/2026-07-11_w2-gate/2026-07-11T064255_pallets__flask-4045.patch (572 bytes)]

@@ -1,0 +1,5 @@
+[trajectory: results/2026-07-11_w2-gate/2026-07-11T064904_pylint-dev__pylint-7080.jsonl]
+[sandbox: image=swb-lite-pylint-dev__pylint-7080 container=swb-8a4bfa990fae]
+[COMPACTION at turn 27: ~25505 tok >= 25000 -> elided 14 blocks, ~8803 tok removed (target NOT met — un-elidable floor)]
+[hit max_turns=40 without end_turn | cost=$0.159385 | reward-hack flags=0 | trajectory=results/2026-07-11_w2-gate/2026-07-11T064904_pylint-dev__pylint-7080.jsonl]
+[patch: empty or extraction failed — final_git_diff meta line logged]

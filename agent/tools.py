@@ -10,7 +10,15 @@ error — it only exists inside the sandbox.
 
 Every tool bounds its output: unbounded dumps into context are the W2
 binding constraint, so the caps land with the tools, not after.
+
+This file also runs INSIDE task containers (sandbox copies it to
+/opt/toolbox), whose Python can be as old as the task era — the future
+import keeps PEP 604 unions in signatures from crashing at def time on
+py<3.10 (measured: pallets__flask-4045 W2-gate run, every toolbox tool
+dead on python:3.9 with `TypeError: unsupported operand type(s) for |`).
 """
+
+from __future__ import annotations
 
 import re
 import subprocess

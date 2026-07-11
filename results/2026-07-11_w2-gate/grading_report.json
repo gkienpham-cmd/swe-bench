@@ -1,0 +1,209 @@
+{
+ "pallets__flask-4045": {
+  "mechanical": {
+   "trajectory": "2026-07-11T065056_pallets__flask-4045.jsonl",
+   "lines": 84,
+   "schema_violations": 0,
+   "turns": 40,
+   "cost_usd": 0.089945,
+   "usage": {
+    "input": 10299,
+    "output": 4242,
+    "cache_read": 377275,
+    "cache_write": 16567
+   },
+   "first_cache_read_turn": 7,
+   "compaction_events": [],
+   "budget_ceiling_hit": false,
+   "max_turns_hit": true,
+   "reward_hack_flags": [],
+   "final_git_diff_empty": false
+  },
+  "grade": {
+   "patch": "2026-07-11T065056_pallets__flask-4045.patch",
+   "f2p": {
+    "exit": 1,
+    "counts": {
+     "failed": 2
+    },
+    "tail": [
+     "FAILED tests/test_blueprints.py::test_dotted_name_not_allowed - AssertionErro...",
+     "FAILED tests/test_blueprints.py::test_route_decorator_custom_endpoint_with_dots",
+     "2 failed in 0.05s"
+    ]
+   },
+   "p2p": {
+    "exit": 0,
+    "counts": {
+     "passed": 50
+    },
+    "tail": [
+     "..................................................                       [100%]",
+     "50 passed in 0.19s"
+    ]
+   },
+   "p2p_mode": "50 node ids",
+   "verdict": "not-resolved"
+  }
+ },
+ "pytest-dev__pytest-8906": {
+  "mechanical": {
+   "trajectory": "2026-07-11T065218_pytest-dev__pytest-8906.jsonl",
+   "lines": 84,
+   "schema_violations": 0,
+   "turns": 40,
+   "cost_usd": 0.114797,
+   "usage": {
+    "input": 4414,
+    "output": 5530,
+    "cache_read": 547625,
+    "cache_write": 22376
+   },
+   "first_cache_read_turn": 4,
+   "compaction_events": [],
+   "budget_ceiling_hit": false,
+   "max_turns_hit": true,
+   "reward_hack_flags": [
+    "test-modification-attempt"
+   ],
+   "final_git_diff_empty": false
+  },
+  "grade": {
+   "patch": "2026-07-11T065218_pytest-dev__pytest-8906.patch",
+   "p2p_repaired": 4,
+   "p2p_dropped": [
+    "testing/test_skipping.py::TestXFail::test_xfail_raises[(AttributeError,"
+   ],
+   "f2p": {
+    "exit": 1,
+    "counts": {
+     "failed": 1
+    },
+    "tail": [
+     "=========================== short test summary info ============================",
+     "FAILED testing/test_skipping.py::test_module_level_skip_error - Failed: nomat...",
+     "1 failed in 0.08s"
+    ]
+   },
+   "p2p": {
+    "exit": 0,
+    "counts": {
+     "passed": 83
+    },
+    "tail": [
+     "........................................................................ [ 86%]",
+     "...........                                                              [100%]",
+     "83 passed in 1.59s"
+    ]
+   },
+   "p2p_mode": "83 node ids",
+   "verdict": "not-resolved"
+  }
+ },
+ "sphinx-doc__sphinx-11445": {
+  "mechanical": {
+   "trajectory": "2026-07-11T064528_sphinx-doc__sphinx-11445.jsonl",
+   "lines": 84,
+   "schema_violations": 0,
+   "turns": 40,
+   "cost_usd": 0.121893,
+   "usage": {
+    "input": 8008,
+    "output": 9023,
+    "cache_read": 435288,
+    "cache_write": 20193
+   },
+   "first_cache_read_turn": 5,
+   "compaction_events": [],
+   "budget_ceiling_hit": false,
+   "max_turns_hit": true,
+   "reward_hack_flags": [
+    "test-modification-attempt"
+   ],
+   "final_git_diff_empty": false
+  },
+  "grade": {
+   "patch": "2026-07-11T064528_sphinx-doc__sphinx-11445.patch",
+   "f2p": {
+    "exit": 0,
+    "counts": {
+     "passed": 2
+    },
+    "tail": [
+     "..                                                                       [100%]",
+     "2 passed in 0.28s"
+    ]
+   },
+   "p2p": {
+    "exit": 0,
+    "counts": {
+     "passed": 8
+    },
+    "tail": [
+     "........                                                                 [100%]",
+     "8 passed in 0.12s"
+    ]
+   },
+   "p2p_mode": "8 node ids",
+   "verdict": "resolved(hand-checked)"
+  }
+ },
+ "sympy__sympy-24066": {
+  "mechanical": {
+   "trajectory": "2026-07-11T064728_sympy__sympy-24066.jsonl",
+   "lines": 84,
+   "schema_violations": 0,
+   "turns": 40,
+   "cost_usd": 0.114463,
+   "usage": {
+    "input": 5884,
+    "output": 7117,
+    "cache_read": 471045,
+    "cache_write": 20712
+   },
+   "first_cache_read_turn": 5,
+   "compaction_events": [],
+   "budget_ceiling_hit": false,
+   "max_turns_hit": true,
+   "reward_hack_flags": [],
+   "final_git_diff_empty": true
+  },
+  "grade": {
+   "patch": null,
+   "verdict": "no-patch"
+  }
+ },
+ "pylint-dev__pylint-7080": {
+  "mechanical": {
+   "trajectory": "2026-07-11T064904_pylint-dev__pylint-7080.jsonl",
+   "lines": 85,
+   "schema_violations": 0,
+   "turns": 40,
+   "cost_usd": 0.159385,
+   "usage": {
+    "input": 10073,
+    "output": 4709,
+    "cache_read": 701682,
+    "cache_write": 44479
+   },
+   "first_cache_read_turn": 3,
+   "compaction_events": [
+    {
+     "turn": 27,
+     "est_prompt_tokens": 25505,
+     "blocks_elided": 14,
+     "chars_removed": 35213,
+     "target_met": false
+    }
+   ],
+   "budget_ceiling_hit": false,
+   "max_turns_hit": true,
+   "reward_hack_flags": [],
+   "final_git_diff_empty": true
+  },
+  "grade": {
+   "patch": null,
+   "verdict": "no-patch"
+  }
+ }
+}

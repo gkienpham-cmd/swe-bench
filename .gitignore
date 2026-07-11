@@ -9,3 +9,5 @@ __pycache__/
 
 # OS
 .DS_Store
+checkouts/
+results/2026-07-11_w2-gate/lite_instances.json

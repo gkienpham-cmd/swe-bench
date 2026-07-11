@@ -1,0 +1,4 @@
+[trajectory: results/2026-07-11_w2-gate/2026-07-11T064728_sympy__sympy-24066.jsonl]
+[sandbox: image=swb-lite-sympy__sympy-24066 container=swb-faffe2da00b6]
+[hit max_turns=40 without end_turn | cost=$0.114464 | reward-hack flags=0 | trajectory=results/2026-07-11_w2-gate/2026-07-11T064728_sympy__sympy-24066.jsonl]
+[patch: empty or extraction failed — final_git_diff meta line logged]

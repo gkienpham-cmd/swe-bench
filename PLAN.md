@@ -34,6 +34,7 @@ Goal: the agent survives long trajectories without blowing context or budget.
 - **D10–11:** Conversation compaction near the context limit (preserve: files touched, hypotheses, test results). Max-iteration and per-task cost caps: ~$1/task, ~40 steps (mini-SWE-agent defaults are $3/250 — ours are tighter for Lite).
 - **D12–13:** Prompt-caching integration — stable prefix (system prompt + tool defs) first, volatile content last; verify `usage.cache_read_input_tokens > 0` on the second run (zero means a silent invalidator — timestamp, unsorted JSON, varying tool set); mind the minimum cacheable prefix (Haiku 4.5: 4096 tokens — verify for the pinned Sonnet). **Freeze JSONL trajectory schema v1** (`schemas/trajectory.schema.json`): one line per step with messages, raw tool calls, full file diffs, observation, tokens, cost, cache stats. Raw tool calls + diffs are non-negotiable — the Week 5 reward-hacking analysis must be computable post-hoc over Week 3 baseline data.
 - **D14:** Buffer. **Gate W2: 5 real Lite tasks run by hand through the agent with caps and logging working.** Retro.
+- ✅ **Gate W2: PASS 2026-07-11** — 5 real Lite tasks (7 runs incl. 2 reruns) end-to-end with caps + caching + schema v1 + patch extraction live; 25k compaction fired live (pylint-7080 turn 27); first 2 reward-hack flags logged; 1/5 resolved hand-checked (dev, Haiku, n=1); $0.81 total; evidence in `results/2026-07-11_w2-gate/`.
 
 ## Week 3 — Official harness & first honest numbers
 
