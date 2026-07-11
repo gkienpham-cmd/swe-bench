@@ -133,7 +133,11 @@ TOOL_SCHEMAS = [
 def _resolve(workdir: Path, path: str) -> tuple[Path | None, str]:
     """Resolve a repo-relative path; refuse escapes. Returns (path, error)."""
     target = (workdir / path).resolve()
-    if not target.is_relative_to(workdir.resolve()):
+    # Path.is_relative_to is py3.9+; official task images go older, and this
+    # runs at call time (the future import only shields annotations).
+    try:
+        target.relative_to(workdir.resolve())
+    except ValueError:
         return None, f"Error: path escapes the repository root: {path}"
     return target, ""
 

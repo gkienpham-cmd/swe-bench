@@ -47,10 +47,18 @@ class Sandbox:
     """Context manager for one per-task container. Teardown is guaranteed:
     __exit__ force-removes the container even when the body raises."""
 
-    def __init__(self, image: str, repo_src: str | Path):
+    def __init__(self, image: str, repo_src: str | Path | None, workdir: str = WORKSPACE):
+        """repo_src=None → official-image mode: the image already contains
+        the repo at `workdir` (SWE-bench eval images ship it at /testbed
+        with a conda `testbed` env); nothing is copied in except the
+        toolbox. With a repo_src, W1/W2 behavior is byte-identical."""
         self.image = image
-        self.repo_src = Path(repo_src)
+        self.repo_src = Path(repo_src) if repo_src is not None else None
+        self.workdir = workdir
         self.container = f"swb-{uuid.uuid4().hex[:12]}"
+        # Filled by start() via feature detection; empty in workspace mode.
+        self._env_prefix = ""          # prepended to bash/run_tests commands
+        self._toolbox_py = "python3"   # interpreter for /opt/toolbox
 
     # --- lifecycle ---
 
@@ -63,7 +71,7 @@ class Sandbox:
         return False
 
     def start(self) -> None:
-        if not self.repo_src.is_dir():
+        if self.repo_src is not None and not self.repo_src.is_dir():
             raise SandboxError(f"repo_src is not a directory: {self.repo_src}")
         self._docker(
             "run", "-d", "--network", "none", "--name", self.container,
@@ -72,15 +80,26 @@ class Sandbox:
         try:
             # mkdir first: docker cp of DIR/. requires the destination to exist,
             # and arbitrary W3 task images may lack /workspace.
-            self._exec_raw(f"mkdir -p {WORKSPACE} {TOOLBOX_DIR}", DOCKER_TIMEOUT_S, workdir=None)
-            self._docker("cp", f"{self.repo_src}/.", f"{self.container}:{WORKSPACE}")
+            self._exec_raw(f"mkdir -p {self.workdir} {TOOLBOX_DIR}", DOCKER_TIMEOUT_S, workdir=None)
+            if self.repo_src is not None:
+                self._docker("cp", f"{self.repo_src}/.", f"{self.container}:{self.workdir}")
             for fname in ("tools.py", "toolbox.py"):
                 self._docker("cp", str(_AGENT_DIR / fname), f"{self.container}:{TOOLBOX_DIR}/{fname}")
-            # Baseline commit so `git diff` is the patch-extraction path.
+            self._detect_interpreters()
+            # Baseline so `git diff` is the patch-extraction path. Three cases
+            # (measured on sweb.eval.x86_64.sphinx-11445, 2026-07-12):
+            #   no .git   -> init + commit (hand-built/workspace images)
+            #   dirty     -> commit the dirt so env-setup residue never enters
+            #                the agent's patch (a dirty hunk would fail
+            #                `git apply` on the harness's clean checkout)
+            #   clean     -> leave HEAD as-is (official images sit at
+            #                base_commit state; diff vs HEAD IS the patch)
             proc = self._exec_raw(
                 "git config --global --add safe.directory '*' && "
                 "if [ ! -d .git ]; then git init -q && git add -A && "
-                "git -c user.email=sandbox@local -c user.name=sandbox commit -qm baseline; fi",
+                "git -c user.email=sandbox@local -c user.name=sandbox commit -qm baseline; "
+                "elif [ -n \"$(git status --porcelain)\" ]; then git add -A && "
+                "git -c user.email=sandbox@local -c user.name=sandbox commit -qm baseline-dirt; fi",
                 DOCKER_TIMEOUT_S,
             )
             if proc.returncode != 0:
@@ -88,6 +107,26 @@ class Sandbox:
         except BaseException:
             self.stop()
             raise
+
+    def _detect_interpreters(self) -> None:
+        """Official images: `docker exec sh -c` is a NON-login shell, so
+        `python3` resolves to conda BASE (no pytest) — the testbed env only
+        gets on PATH via .bashrc, which sh never reads (measured on the
+        sphinx-11445 eval image: base=3.11.5, testbed=3.9.20). Fix by
+        prefixing PATH when the env dir exists. The toolbox runs under conda
+        base — a MODERN interpreter — decoupling toolbox compat from the
+        task era; both prefixes stay empty in workspace mode so W1/W2
+        behavior is byte-identical."""
+        probe = self._exec_raw(
+            "test -d /opt/miniconda3/envs/testbed/bin && echo ENV; "
+            "test -x /opt/miniconda3/bin/python3 && echo BASE",
+            DOCKER_TIMEOUT_S, workdir=None,
+        )
+        marks = probe.stdout.split()
+        if "ENV" in marks:
+            self._env_prefix = "export PATH=/opt/miniconda3/envs/testbed/bin:$PATH; "
+        if "BASE" in marks:
+            self._toolbox_py = "/opt/miniconda3/bin/python3"
 
     def stop(self) -> None:
         # Force-remove by name; idempotent, failure is not actionable here.
@@ -114,7 +153,7 @@ class Sandbox:
 
     def bash(self, command: str) -> tuple[str, bool]:
         try:
-            proc = self._exec_raw(command, BASH_TIMEOUT_S)
+            proc = self._exec_raw(self._env_prefix + command, BASH_TIMEOUT_S)
         except subprocess.TimeoutExpired:
             return bash_timeout_error(command)
         if proc.returncode == 124:  # coreutils timeout; ambiguous with a genuine exit 124, acceptably rare
@@ -126,7 +165,7 @@ class Sandbox:
         if test_path:
             cmd += " " + shlex.quote(test_path)
         try:
-            proc = self._exec_raw(cmd, TESTS_TIMEOUT_S)
+            proc = self._exec_raw(self._env_prefix + cmd, TESTS_TIMEOUT_S)
         except subprocess.TimeoutExpired:
             return format_test_result(None, "")
         if proc.returncode == 124:
@@ -139,7 +178,8 @@ class Sandbox:
         request = json.dumps({"name": name, "input": tool_input}, ensure_ascii=False)
         try:
             proc = subprocess.run(
-                ["docker", "exec", "-i", self.container, "python3", f"{TOOLBOX_DIR}/toolbox.py"],
+                ["docker", "exec", "-i", "-e", f"TOOLBOX_WORKSPACE={self.workdir}",
+                 self.container, self._toolbox_py, f"{TOOLBOX_DIR}/toolbox.py"],
                 input=request, capture_output=True, text=True, timeout=TOOLBOX_TIMEOUT_S,
             )
         except subprocess.TimeoutExpired:
@@ -157,9 +197,14 @@ class Sandbox:
 
     # --- plumbing ---
 
-    def _exec_raw(self, command: str, timeout: int, workdir: str | None = WORKSPACE):
+    _UNSET = object()
+
+    def _exec_raw(self, command: str, timeout: int, workdir=_UNSET):
         """docker exec, command under coreutils `timeout` inside the container.
-        Host-side subprocess timeout is a backstop 15s behind it."""
+        Host-side subprocess timeout is a backstop 15s behind it. workdir
+        defaults to the instance workdir; pass None for no -w."""
+        if workdir is Sandbox._UNSET:
+            workdir = self.workdir
         argv = ["docker", "exec"]
         if workdir:
             argv += ["-w", workdir]

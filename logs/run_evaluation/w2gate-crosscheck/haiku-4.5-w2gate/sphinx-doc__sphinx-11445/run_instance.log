@@ -1,0 +1,124 @@
+2026-07-12 00:36:51,901 - INFO - Creating container for sphinx-doc__sphinx-11445...
+2026-07-12 00:36:51,985 - INFO - Container for sphinx-doc__sphinx-11445 created: 47a931381b8664a6e6b142bcf5b647c9328496af9ee81a827dbd0df3818c6041
+2026-07-12 00:36:52,216 - INFO - Container for sphinx-doc__sphinx-11445 started: 47a931381b8664a6e6b142bcf5b647c9328496af9ee81a827dbd0df3818c6041
+2026-07-12 00:36:52,217 - INFO - Intermediate patch for sphinx-doc__sphinx-11445 written to logs/run_evaluation/w2gate-crosscheck/haiku-4.5-w2gate/sphinx-doc__sphinx-11445/patch.diff, now applying to container...
+2026-07-12 00:36:52,492 - INFO - >>>>> Applied Patch:
+/tmp/patch.diff:60: trailing whitespace.
+    
+/tmp/patch.diff:66: trailing whitespace.
+    
+/tmp/patch.diff:69: trailing whitespace.
+    
+/tmp/patch.diff:72: trailing whitespace.
+    
+Checking patch sphinx/util/rst.py...
+Checking patch tests/roots/test-prolog-domain/conf.py...
+Checking patch tests/roots/test-prolog-domain/index.rst...
+Checking patch tests/roots/test-prolog-domain/module.rst...
+Checking patch tests/test_markup.py...
+Applied patch sphinx/util/rst.py cleanly.
+Applied patch tests/roots/test-prolog-domain/conf.py cleanly.
+Applied patch tests/roots/test-prolog-domain/index.rst cleanly.
+Applied patch tests/roots/test-prolog-domain/module.rst cleanly.
+Applied patch tests/test_markup.py cleanly.
+warning: 4 lines add whitespace errors.
+
+2026-07-12 00:36:53,172 - INFO - Git diff before:
+diff --git a/sphinx/util/rst.py b/sphinx/util/rst.py
+index 7a1538325..dcaa4bc6b 100644
+--- a/sphinx/util/rst.py
++++ b/sphinx/util/rst.py
+@@ -25,7 +25,7 @@ except ImportError:
+ 
+ logger = logging.getLogger(__name__)
+ 
+-docinfo_re = re.compile(':\\w+:.*?')
++docinfo_re = re.compile(r':\w+:\s')
+ symbols_re = re.compile(r'([!-\-/:-@\[-`{-~])')  # symbols without dot(0x2e)
+ SECTIONING_CHARS = ['=', '-', '~']
+ 
+diff --git a/tests/test_markup.py b/tests/test_markup.py
+index 01e3dd8ff..e25a22c47 100644
+--- a/tests/test_markup.py
++++ b/tests/test_markup.py
+@@ -541,6 +541,26 @@ def test_rst_prolog(app, status, warning):
+     assert not md.rawsource.endswith('*Good-bye world*.\n')
+ 
+ 
++@pytest.mark.sphinx('dummy', testroot='prolog-domain')
++def test_rst_prolog_with_domain_directive(app, status, warning):
++    """Test that rst_prolog doesn't break headings with domain directives.
++    
++    Regression test for issue where rst_prolog would cause headings like
++    `:mod:`mymodule`` to fail to render properly when rst_prolog is set.
++    """
++    app.builder.build_all()
++    doctree = app.env.get_doctree('module')
++    
++    # The document should have a section as its first child
++    assert_node(doctree[0], nodes.section)
++    
++    # The section should have a title that contains the domain role
++    assert_node(doctree[0][0], nodes.title)
++    
++    # Verify the domain directive was processed correctly
++    assert_node(doctree[0][0][0], nodes.problematic | nodes.reference)
++
++
+ @pytest.mark.sphinx('dummy', testroot='keep_warnings')
+ def test_keep_warnings_is_True(app, status, warning):
+     app.builder.build_all()
+2026-07-12 00:36:53,173 - INFO - Eval script for sphinx-doc__sphinx-11445 written to logs/run_evaluation/w2gate-crosscheck/haiku-4.5-w2gate/sphinx-doc__sphinx-11445/eval.sh; copying to container...
+2026-07-12 00:37:01,646 - INFO - Test runtime: 8.39 seconds
+2026-07-12 00:37:01,647 - INFO - Test output for sphinx-doc__sphinx-11445 written to logs/run_evaluation/w2gate-crosscheck/haiku-4.5-w2gate/sphinx-doc__sphinx-11445/test_output.txt
+2026-07-12 00:37:01,754 - INFO - Git diff after:
+diff --git a/sphinx/util/rst.py b/sphinx/util/rst.py
+index 7a1538325..dcaa4bc6b 100644
+--- a/sphinx/util/rst.py
++++ b/sphinx/util/rst.py
+@@ -25,7 +25,7 @@ except ImportError:
+ 
+ logger = logging.getLogger(__name__)
+ 
+-docinfo_re = re.compile(':\\w+:.*?')
++docinfo_re = re.compile(r':\w+:\s')
+ symbols_re = re.compile(r'([!-\-/:-@\[-`{-~])')  # symbols without dot(0x2e)
+ SECTIONING_CHARS = ['=', '-', '~']
+ 
+diff --git a/tests/test_markup.py b/tests/test_markup.py
+index 01e3dd8ff..e25a22c47 100644
+--- a/tests/test_markup.py
++++ b/tests/test_markup.py
+@@ -541,6 +541,26 @@ def test_rst_prolog(app, status, warning):
+     assert not md.rawsource.endswith('*Good-bye world*.\n')
+ 
+ 
++@pytest.mark.sphinx('dummy', testroot='prolog-domain')
++def test_rst_prolog_with_domain_directive(app, status, warning):
++    """Test that rst_prolog doesn't break headings with domain directives.
++    
++    Regression test for issue where rst_prolog would cause headings like
++    `:mod:`mymodule`` to fail to render properly when rst_prolog is set.
++    """
++    app.builder.build_all()
++    doctree = app.env.get_doctree('module')
++    
++    # The document should have a section as its first child
++    assert_node(doctree[0], nodes.section)
++    
++    # The section should have a title that contains the domain role
++    assert_node(doctree[0][0], nodes.title)
++    
++    # Verify the domain directive was processed correctly
++    assert_node(doctree[0][0][0], nodes.problematic | nodes.reference)
++
++
+ @pytest.mark.sphinx('dummy', testroot='keep_warnings')
+ def test_keep_warnings_is_True(app, status, warning):
+     app.builder.build_all()
+2026-07-12 00:37:01,755 - INFO - Grading answer for sphinx-doc__sphinx-11445...
+2026-07-12 00:37:01,756 - INFO - report: {'sphinx-doc__sphinx-11445': {'patch_is_None': False, 'patch_exists': True, 'patch_successfully_applied': True, 'resolved': True, 'tests_status': {'FAIL_TO_PASS': {'success': ['tests/test_util_rst.py::test_prepend_prolog_with_roles_in_sections_with_newline', 'tests/test_util_rst.py::test_prepend_prolog_with_roles_in_sections_without_newline'], 'failure': []}, 'PASS_TO_PASS': {'success': ['tests/test_util_rst.py::test_escape', 'tests/test_util_rst.py::test_append_epilog', 'tests/test_util_rst.py::test_prepend_prolog', 'tests/test_util_rst.py::test_prepend_prolog_with_CR', 'tests/test_util_rst.py::test_prepend_prolog_without_CR', 'tests/test_util_rst.py::test_prepend_prolog_with_roles_in_sections', 'tests/test_util_rst.py::test_textwidth', 'tests/test_util_rst.py::test_heading'], 'failure': []}, 'FAIL_TO_FAIL': {'success': [], 'failure': []}, 'PASS_TO_FAIL': {'success': [], 'failure': []}}}}
+Result for sphinx-doc__sphinx-11445: resolved: True
+2026-07-12 00:37:01,756 - INFO - Attempting to stop container sweb.eval.sphinx-doc__sphinx-11445.w2gate-crosscheck...
+2026-07-12 00:37:16,988 - INFO - Attempting to remove container sweb.eval.sphinx-doc__sphinx-11445.w2gate-crosscheck...
+2026-07-12 00:37:17,035 - INFO - Container sweb.eval.sphinx-doc__sphinx-11445.w2gate-crosscheck removed.

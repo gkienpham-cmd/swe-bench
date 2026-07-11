@@ -118,6 +118,7 @@ def run(
     task: str, model: str, workdir: Path, out_dir: Path, task_id: str, max_turns: int,
     sandbox_image: str | None = None, max_cost_usd: float | None = None,
     compact_at_tokens: int | None = None,
+    sandbox_workdir: str = "/workspace", sandbox_preloaded: bool = False,
 ) -> int:
     # Rule 4c: raw metered API key only. Pin it explicitly so the SDK cannot
     # silently fall back to an OAuth profile or auth token.
@@ -140,10 +141,16 @@ def run(
     sandbox = None
     try:
         if sandbox_image:
-            sandbox = Sandbox(sandbox_image, workdir)
+            # Preloaded (official SWE-bench eval images): the repo already
+            # lives in the image at sandbox_workdir — nothing is copied in.
+            sandbox = Sandbox(sandbox_image, None if sandbox_preloaded else workdir,
+                              workdir=sandbox_workdir)
             sandbox.start()
-            print(f"[sandbox: image={sandbox_image} container={sandbox.container}]")
-            log.append("meta", {"sandbox_image": sandbox_image, "container": sandbox.container})
+            print(f"[sandbox: image={sandbox_image} container={sandbox.container} "
+                  f"workdir={sandbox_workdir} preloaded={sandbox_preloaded}]")
+            log.append("meta", {"sandbox_image": sandbox_image, "container": sandbox.container,
+                                "sandbox_workdir": sandbox_workdir,
+                                "sandbox_preloaded": sandbox_preloaded})
         budget = BudgetTracker(model, max_cost_usd=max_cost_usd)
         rc = _loop(client, log, task, model, workdir, max_turns, sandbox, budget,
                    compact_at_tokens=compact_at_tokens)
@@ -314,6 +321,16 @@ def main() -> int:
         help="Run all tools inside a per-task Docker container of this image; "
         "the repo at --workdir is copied in (no bind mounts, no network).",
     )
+    parser.add_argument(
+        "--sandbox-workdir", default="/workspace",
+        help="Repo directory inside the container (official SWE-bench eval "
+        "images ship the repo at /testbed).",
+    )
+    parser.add_argument(
+        "--sandbox-preloaded", action="store_true",
+        help="The image already contains the repo at --sandbox-workdir; skip "
+        "the --workdir copy-in (use with official sweb.eval images).",
+    )
     args = parser.parse_args()
     # <=0 means "no ceiling" now that the default is a real number.
     max_cost = args.max_cost_usd if args.max_cost_usd and args.max_cost_usd > 0 else None
@@ -321,6 +338,7 @@ def main() -> int:
         args.task, args.model, Path(args.workdir), Path(args.out_dir), args.task_id,
         args.max_turns, sandbox_image=args.sandbox_image, max_cost_usd=max_cost,
         compact_at_tokens=args.compact_at_tokens if args.compact_at_tokens > 0 else None,
+        sandbox_workdir=args.sandbox_workdir, sandbox_preloaded=args.sandbox_preloaded,
     )
 
 
