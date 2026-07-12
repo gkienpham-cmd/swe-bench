@@ -1,0 +1,89 @@
+diff --git a/sklearn/utils/tests/test_validation.py b/sklearn/utils/tests/test_validation.py
+index 00182fa0a..af582be45 100644
+--- a/sklearn/utils/tests/test_validation.py
++++ b/sklearn/utils/tests/test_validation.py
+@@ -426,6 +426,37 @@ def test_check_array_dtype_warning():
+     assert_equal(X_checked.format, 'csr')
+ 
+ 
++def test_check_dataframe_warns_on_dtype():
++    # Check that warn_on_dtype also works for DataFrames
++    # https://github.com/scikit-learn/scikit-learn/issues/10948
++    pd = pytest.importorskip("pandas")
++    df = pd.DataFrame([[1, 2, 3], [4, 5, 6]], dtype=object)
++    assert_warns_message(DataConversionWarning,
++                          "Data with input dtype object were all converted "
++                          "to float64.",
++                          check_array, df, dtype=np.float64,
++                          warn_on_dtype=True)
++    assert_warns(DataConversionWarning, check_array, df,
++                 dtype='numeric', warn_on_dtype=True)
++    assert_no_warnings(check_array, df, dtype='numeric', warn_on_dtype=False)
++
++    # Also check that it raises a warning for mixed dtypes in a DataFrame.
++    df_mixed = pd.DataFrame([['1', 2, 3], ['4', 5, 6]])
++    assert_warns(DataConversionWarning, check_array, df_mixed,
++                 dtype=np.float64, warn_on_dtype=True)
++    assert_warns(DataConversionWarning, check_array, df_mixed,
++                 dtype='numeric', warn_on_dtype=True)
++    assert_warns(DataConversionWarning, check_array, df_mixed,
++                 dtype=object, warn_on_dtype=True)
++
++    # Even with numerical dtypes, a conversion can be made because dtypes
++    # are different.
++    df_mixed_numeric = pd.DataFrame([[1, 2, 3], [4, 5, 6]], dtype=float)
++    df_mixed_numeric.iloc[0, 0] = np.int64(1)
++    assert_no_warnings(check_array, df_mixed_numeric, dtype='numeric',
++                       warn_on_dtype=True)
++
++
+ def test_check_array_accept_sparse_type_exception():
+     X = [[1, 2], [3, 4]]
+     X_csr = sp.csr_matrix(X)
+diff --git a/sklearn/utils/validation.py b/sklearn/utils/validation.py
+index fe1f7236e..3a3c19a5f 100644
+--- a/sklearn/utils/validation.py
++++ b/sklearn/utils/validation.py
+@@ -461,11 +461,23 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
+     # store whether originally we wanted numeric dtype
+     dtype_numeric = isinstance(dtype, six.string_types) and dtype == "numeric"
+ 
++    # check if the object contains several dtypes (typically a pandas
++    # DataFrame), and store them. If not, store None.
++    dtypes_orig = None
++    if hasattr(array, "dtypes") and hasattr(array.dtypes, '__array__'):
++        dtypes_orig = np.array(array.dtypes)
++
+     dtype_orig = getattr(array, "dtype", None)
+     if not hasattr(dtype_orig, 'kind'):
+         # not a data type (e.g. a column named dtype in a pandas DataFrame)
+         dtype_orig = None
+ 
++    # if all dtypes are the same, np.result_type will not raise error
++    # and will return the proper dtype
++    if dtypes_orig is not None and all(dtypes_orig[0] == dtype_iter
++                                        for dtype_iter in dtypes_orig):
++        dtype_orig = dtypes_orig[0]
++
+     if dtype_numeric:
+         if dtype_orig is not None and dtype_orig.kind == "O":
+             # if input is object, convert to float.
+@@ -574,9 +586,16 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
+                                 context))
+ 
+     if warn_on_dtype and dtype_orig is not None and array.dtype != dtype_orig:
+-        msg = ("Data with input dtype %s was converted to %s%s."
++        msg = ("Data with input dtype %s were all converted to %s%s."
+                % (dtype_orig, array.dtype, context))
+-        warnings.warn(msg, DataConversionWarning)
++        warnings.warn(msg, DataConversionWarning, stacklevel=3)
++    elif warn_on_dtype and dtypes_orig is not None and \
++            any(array.dtype != orig for orig in dtypes_orig):
++        # if input was a dataframe with several dtypes and at least one of
++        # them was converted, warn about it.
++        msg = ("Data with input dtype %s were all converted to %s%s."
++               % (', '.join(map(str, dtypes_orig)), array.dtype, context))
++        warnings.warn(msg, DataConversionWarning, stacklevel=3)
+ 
+     if copy and np.may_share_memory(array, array_orig):
+         array = np.array(array, dtype=dtype, order=order)

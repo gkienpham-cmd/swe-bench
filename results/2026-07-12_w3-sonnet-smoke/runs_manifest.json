@@ -1,0 +1,182 @@
+[
+ {
+  "instance_id": "django__django-13315",
+  "exit_code": 2,
+  "wall_s": 128.4,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "psf__requests-2148",
+  "exit_code": 0,
+  "wall_s": 52.6,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "sympy__sympy-15308",
+  "exit_code": 0,
+  "wall_s": 56.8,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "astropy__astropy-6938",
+  "exit_code": 0,
+  "wall_s": 77.2,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "django__django-10924",
+  "exit_code": 0,
+  "wall_s": 92.7,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "django__django-11620",
+  "exit_code": 2,
+  "wall_s": 158.9,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "django__django-11999",
+  "exit_code": 0,
+  "wall_s": 106.1,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "django__django-12915",
+  "exit_code": 0,
+  "wall_s": 45.6,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "django__django-13448",
+  "exit_code": 0,
+  "wall_s": 114.6,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "django__django-14580",
+  "exit_code": 0,
+  "wall_s": 58.0,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "django__django-14672",
+  "exit_code": 0,
+  "wall_s": 23.3,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "django__django-16255",
+  "exit_code": 0,
+  "wall_s": 18.3,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "django__django-16910",
+  "exit_code": 2,
+  "wall_s": 195.3,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "django__django-17051",
+  "exit_code": 2,
+  "wall_s": 179.4,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "matplotlib__matplotlib-22835",
+  "exit_code": 0,
+  "wall_s": 197.2,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "matplotlib__matplotlib-23476",
+  "exit_code": 2,
+  "wall_s": 171.0,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "pydata__xarray-5131",
+  "exit_code": 0,
+  "wall_s": 61.4,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "pylint-dev__pylint-5859",
+  "exit_code": 2,
+  "wall_s": 176.5,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "pytest-dev__pytest-5221",
+  "exit_code": 0,
+  "wall_s": 104.8,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "pytest-dev__pytest-6116",
+  "exit_code": 0,
+  "wall_s": 146.8,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-10949",
+  "exit_code": 0,
+  "wall_s": 188.5,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "scikit-learn__scikit-learn-25570",
+  "exit_code": 0,
+  "wall_s": 146.8,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-8273",
+  "exit_code": 0,
+  "wall_s": 87.8,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "sphinx-doc__sphinx-8713",
+  "exit_code": 0,
+  "wall_s": 95.4,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "sympy__sympy-11400",
+  "exit_code": 0,
+  "wall_s": 94.3,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "sympy__sympy-12481",
+  "exit_code": 0,
+  "wall_s": 155.1,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "sympy__sympy-13971",
+  "exit_code": 0,
+  "wall_s": 50.8,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "sympy__sympy-17630",
+  "exit_code": 2,
+  "wall_s": 166.5,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "sympy__sympy-20212",
+  "exit_code": 0,
+  "wall_s": 277.2,
+  "model": "claude-sonnet-5"
+ },
+ {
+  "instance_id": "sympy__sympy-23262",
+  "exit_code": 0,
+  "wall_s": 63.1,
+  "model": "claude-sonnet-5"
+ }
+]

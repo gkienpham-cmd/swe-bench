@@ -1,0 +1,47 @@
+diff --git a/astropy/io/fits/fitsrec.py b/astropy/io/fits/fitsrec.py
+index 574b4073b1..bec100d12c 100644
+--- a/astropy/io/fits/fitsrec.py
++++ b/astropy/io/fits/fitsrec.py
+@@ -1261,7 +1261,8 @@ class FITS_rec(np.recarray):
+ 
+         # Replace exponent separator in floating point numbers
+         if 'D' in format:
+-            output_field.replace(encode_ascii('E'), encode_ascii('D'))
++            output_field[:] = output_field.replace(encode_ascii('E'),
++                                                     encode_ascii('D'))
+ 
+ 
+ def _get_recarray_field(array, key):
+diff --git a/astropy/io/fits/tests/test_table.py b/astropy/io/fits/tests/test_table.py
+index 67fe21aa72..d6b8b9557b 100644
+--- a/astropy/io/fits/tests/test_table.py
++++ b/astropy/io/fits/tests/test_table.py
+@@ -2841,6 +2841,28 @@ class TestColumnFunctions(FitsTestCase):
+             raw = np.rec.recarray.field(hdul[1].data, 'TEST')
+             assert raw.tostring() == b'   1.   2.   3.'
+ 
++    def test_ascii_float_d_exponent(self):
++        """
++        Regression test to ensure that 'D' exponent characters are
++        correctly substituted in ASCII table columns with a 'D' format
++        (double-precision floating point).
++
++        Previously the exponent replacement in
++        `FITS_rec._scale_back_ascii` relied on the in-place behavior of
++        `chararray.replace`, which does not actually modify arrays
++        in-place, so the substitution had no effect.
++        """
++
++        c = fits.Column('TEST', 'D25.17', array=[1.1, 2.2, 3.3])
++        t = fits.TableHDU.from_columns([c])
++        t.writeto(self.temp('test.fits'))
++
++        with fits.open(self.temp('test.fits')) as hdul:
++            raw = np.rec.recarray.field(hdul[1].data, 'TEST')
++            for val in raw:
++                assert b'D' in val
++                assert b'E' not in val
++
+     def test_column_array_type_mismatch(self):
+         """Regression test for https://aeon.stsci.edu/ssb/trac/pyfits/ticket/218"""
+ 
