@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 import subprocess
 import sys
@@ -92,13 +93,17 @@ def container_smoke() -> None:
     if probe.returncode != 0:
         print("skip: Docker not available — in-container smoke not run")
         return
-    imgs = _run(["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"])
-    candidates = [l for l in imgs.stdout.splitlines() if "sweb.eval" in l]
-    if not candidates:
-        print("skip: no official sweb.eval image present locally — "
-              "in-container smoke not run (pull/build one via the harness)")
-        return
-    image = sorted(candidates)[0]
+    # SWB_COMPAT_IMAGE pins the target (e.g. the oldest-python image of the
+    # dev subset); default keeps the old behavior of grabbing any local one.
+    image = os.environ.get("SWB_COMPAT_IMAGE")
+    if not image:
+        imgs = _run(["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"])
+        candidates = [l for l in imgs.stdout.splitlines() if "sweb.eval" in l]
+        if not candidates:
+            print("skip: no official sweb.eval image present locally — "
+                  "in-container smoke not run (pull/build one via the harness)")
+            return
+        image = sorted(candidates)[0]
     name = f"swb-compat-{uuid.uuid4().hex[:8]}"
     try:
         r = _run(["docker", "run", "-d", "--network", "none", "--name", name,
@@ -107,11 +112,18 @@ def container_smoke() -> None:
         _run(["docker", "exec", name, "mkdir", "-p", "/opt/toolbox"])
         for f in TOOLBOX_FILES:
             _run(["docker", "cp", str(f), f"{name}:/opt/toolbox/{f.name}"])
-        # Prefer the testbed env python (the era interpreter — the hostile
-        # one); fall back to python3 on PATH.
+        # SWB_COMPAT_PY=base mirrors production (sandbox.py runs the toolbox
+        # under conda BASE); default "testbed" keeps the hostile era
+        # interpreter. Note: testbed pythons < 3.7 (django 1.x-3.x era) can
+        # NEVER run tools.py — `from __future__ import annotations` is a
+        # syntax error there — which is exactly why production uses base.
+        if os.environ.get("SWB_COMPAT_PY") == "base":
+            order = "/opt/miniconda3/bin/python3 /opt/conda/bin/python3 python3"
+        else:
+            order = ("/opt/miniconda3/envs/testbed/bin/python "
+                     "/opt/conda/envs/testbed/bin/python python3")
         pick = _run(["docker", "exec", name, "sh", "-c",
-                     "for p in /opt/miniconda3/envs/testbed/bin/python "
-                     "/opt/conda/envs/testbed/bin/python python3; do "
+                     f"for p in {order}; do "
                      "command -v $p >/dev/null 2>&1 && { echo $p; break; }; done"])
         py = pick.stdout.strip() or "python3"
         ver = _run(["docker", "exec", name, py, "-c",

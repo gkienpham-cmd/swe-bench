@@ -23,6 +23,9 @@ from agent.tracelog import TraceLog
 # reference. Cache read ~0.1x input, cache write 1.25x input (5-min TTL).
 PRICING = {
     "claude-haiku-4-5": (1.00, 5.00),
+    # Intro pricing through 2026-08-31 (verified live 2026-07-12; re-verify at
+    # each paid launch, rule 7). List price reverts to (3.00, 15.00).
+    "claude-sonnet-5": (2.00, 10.00),
 }
 
 SYSTEM_PROMPT = (
@@ -178,6 +181,13 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
     messages = [{"role": "user", "content": task}]
     hack_flags = 0
 
+    # Sonnet 5 runs ADAPTIVE thinking when the `thinking` param is omitted
+    # (Haiku: omission = no thinking). Disable it explicitly so the W3 baseline
+    # keeps the Haiku-identical request shape: no thinking blocks (schema v1
+    # never saw them), no thinking spend inside the 4096-token turn cap.
+    # Enabling thinking is a scaffold change that waits for triage data (rule 1).
+    extra = {"thinking": {"type": "disabled"}} if model == "claude-sonnet-5" else {}
+
     for turn in range(max_turns):
         response = client.messages.create(
             model=model,
@@ -185,6 +195,7 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
             system=SYSTEM_BLOCKS,
             tools=TOOL_SCHEMAS,
             messages=messages,
+            **extra,
         )
         cost = budget.add(response.usage)
 

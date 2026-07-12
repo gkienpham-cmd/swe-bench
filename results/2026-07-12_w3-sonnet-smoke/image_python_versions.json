@@ -1,0 +1,242 @@
+{
+ "astropy__astropy-6938": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.astropy_1776_astropy-6938:latest",
+  "probe_wall_s": 10.1,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.6.13"
+ },
+ "django__django-10924": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-10924:latest",
+  "probe_wall_s": 29.7,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.6.13"
+ },
+ "django__django-11620": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-11620:latest",
+  "probe_wall_s": 26.9,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.6.13"
+ },
+ "django__django-11999": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-11999:latest",
+  "probe_wall_s": 23.5,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.6.13"
+ },
+ "django__django-12915": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-12915:latest",
+  "probe_wall_s": 30.6,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.6.13"
+ },
+ "django__django-13315": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-13315:latest",
+  "probe_wall_s": 23.5,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.6.13"
+ },
+ "django__django-13448": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-13448:latest",
+  "probe_wall_s": 26.1,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.6.13"
+ },
+ "django__django-14580": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-14580:latest",
+  "probe_wall_s": 29.2,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.8.20"
+ },
+ "django__django-14672": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-14672:latest",
+  "probe_wall_s": 27.8,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.8.20"
+ },
+ "django__django-16255": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-16255:latest",
+  "probe_wall_s": 25.8,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "django__django-16910": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-16910:latest",
+  "probe_wall_s": 33.2,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.11.10"
+ },
+ "django__django-17051": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.django_1776_django-17051:latest",
+  "probe_wall_s": 32.0,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.11.10"
+ },
+ "matplotlib__matplotlib-22835": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-22835:latest",
+  "probe_wall_s": 186.6,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.11.11"
+ },
+ "matplotlib__matplotlib-23476": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-23476:latest",
+  "probe_wall_s": 472.4,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.11.11"
+ },
+ "psf__requests-2148": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.psf_1776_requests-2148:latest",
+  "probe_wall_s": 72.8,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "pydata__xarray-5131": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.pydata_1776_xarray-5131:latest",
+  "probe_wall_s": 245.1,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.10.15"
+ },
+ "pylint-dev__pylint-5859": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-5859:latest",
+  "probe_wall_s": 51.7,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "pytest-dev__pytest-5221": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-5221:latest",
+  "probe_wall_s": 60.5,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "pytest-dev__pytest-6116": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-6116:latest",
+  "probe_wall_s": 1.7,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "scikit-learn__scikit-learn-10949": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10949:latest",
+  "probe_wall_s": 38.3,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.6.13"
+ },
+ "scikit-learn__scikit-learn-25570": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-25570:latest",
+  "probe_wall_s": 51.4,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "sphinx-doc__sphinx-8273": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8273:latest",
+  "probe_wall_s": 29.6,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "sphinx-doc__sphinx-8713": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8713:latest",
+  "probe_wall_s": 22.9,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "sympy__sympy-11400": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-11400:latest",
+  "probe_wall_s": 23.9,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "sympy__sympy-12481": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12481:latest",
+  "probe_wall_s": 36.6,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "sympy__sympy-13971": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-13971:latest",
+  "probe_wall_s": 42.5,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "sympy__sympy-15308": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-15308:latest",
+  "probe_wall_s": 27.4,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "sympy__sympy-17630": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-17630:latest",
+  "probe_wall_s": 21.9,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "sympy__sympy-20212": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-20212:latest",
+  "probe_wall_s": 25.0,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ },
+ "sympy__sympy-23262": {
+  "compat_base": "pass",
+  "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-23262:latest",
+  "probe_wall_s": 21.0,
+  "pull": "ok",
+  "python_conda_base": "3.11.5",
+  "python_testbed": "3.9.20"
+ }
+}

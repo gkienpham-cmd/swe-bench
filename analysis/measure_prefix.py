@@ -6,7 +6,11 @@ prefix is under 4096, a breakpoint on the system block alone can never cache
 and all caching rides on the conversation breakpoint (whose cumulative prefix
 crosses the minimum within a couple of turns).
 
-Usage: python -m analysis.measure_prefix
+Usage: python -m analysis.measure_prefix [model] [min_cacheable]
+(defaults: claude-haiku-4-5 / 4096 — W3: pass claude-sonnet-5 with its minimum,
+which the cached reference table omits; candidates are 1,024 per the D15 live
+pin or 2,048 per the Sonnet-4.6 row. Token counts are model-tokenizer-specific:
+Sonnet 5 counts ~30% more than Haiku for the same bytes.)
 """
 
 import os
@@ -17,8 +21,8 @@ import anthropic
 from agent.loop import SYSTEM_PROMPT
 from agent.tools import TOOL_SCHEMAS
 
-MODEL = "claude-haiku-4-5"
-HAIKU_MIN_CACHEABLE = 4096  # verified live this session via the claude-api reference
+MODEL = sys.argv[1] if len(sys.argv) > 1 else "claude-haiku-4-5"
+HAIKU_MIN_CACHEABLE = int(sys.argv[2]) if len(sys.argv) > 2 else 4096
 
 
 def main() -> int:
