@@ -1,0 +1,236 @@
+{
+ "seed": 20260712,
+ "variant": "coverage-floor",
+ "algorithm_note": "Proportional stratified over the 295 non-gate Lite test rows. Repos with <5 rows get 0 seats; eligible repos with a proportional share <1.0 seat are pinned to 1; remaining seats by largest remainder (tie-break: fraction desc, stratum size desc, repo asc). Per-stratum draw: random.Random(f'{SEED}:{repo}').sample(sorted(ids), quota). Frozen 2026-07-12 (W3 D16); see analysis/dev_subset_30_README.md.",
+ "excluded_gate_ids": [
+  "pallets__flask-4045",
+  "pylint-dev__pylint-7080",
+  "pytest-dev__pytest-8906",
+  "sphinx-doc__sphinx-11445",
+  "sympy__sympy-24066"
+ ],
+ "per_repo_quotas": {
+  "astropy/astropy": 1,
+  "django/django": 11,
+  "matplotlib/matplotlib": 2,
+  "psf/requests": 1,
+  "pydata/xarray": 1,
+  "pylint-dev/pylint": 1,
+  "pytest-dev/pytest": 2,
+  "scikit-learn/scikit-learn": 2,
+  "sphinx-doc/sphinx": 2,
+  "sympy/sympy": 7
+ },
+ "instances": [
+  {
+   "instance_id": "astropy__astropy-6938",
+   "repo": "astropy/astropy",
+   "version": "1.3",
+   "base_commit": "c76af9ed6bb89bfba45b9f5bc1e635188278e2fa",
+   "image": "swebench/sweb.eval.x86_64.astropy_1776_astropy-6938:latest"
+  },
+  {
+   "instance_id": "django__django-10924",
+   "repo": "django/django",
+   "version": "3.0",
+   "base_commit": "bceadd2788dc2dad53eba0caae172bd8522fd483",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-10924:latest"
+  },
+  {
+   "instance_id": "django__django-11620",
+   "repo": "django/django",
+   "version": "3.0",
+   "base_commit": "514efa3129792ec2abb2444f3e7aeb3f21a38386",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-11620:latest"
+  },
+  {
+   "instance_id": "django__django-11999",
+   "repo": "django/django",
+   "version": "3.1",
+   "base_commit": "84633905273fc916e3d17883810d9969c03f73c2",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-11999:latest"
+  },
+  {
+   "instance_id": "django__django-12915",
+   "repo": "django/django",
+   "version": "3.2",
+   "base_commit": "4652f1f0aa459a7b980441d629648707c32e36bf",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-12915:latest"
+  },
+  {
+   "instance_id": "django__django-13315",
+   "repo": "django/django",
+   "version": "3.2",
+   "base_commit": "36bc47069ce071e80c8129500de3b8664d2058a7",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-13315:latest"
+  },
+  {
+   "instance_id": "django__django-13448",
+   "repo": "django/django",
+   "version": "3.2",
+   "base_commit": "7b9596b974fb0ad1868b10c8c2174e10b72be403",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-13448:latest"
+  },
+  {
+   "instance_id": "django__django-14580",
+   "repo": "django/django",
+   "version": "4.0",
+   "base_commit": "36fa071d6ebd18a61c4d7f1b5c9d17106134bd44",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-14580:latest"
+  },
+  {
+   "instance_id": "django__django-14672",
+   "repo": "django/django",
+   "version": "4.0",
+   "base_commit": "00ea883ef56fb5e092cbe4a6f7ff2e7470886ac4",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-14672:latest"
+  },
+  {
+   "instance_id": "django__django-16255",
+   "repo": "django/django",
+   "version": "4.2",
+   "base_commit": "444b6da7cc229a58a2c476a52e45233001dc7073",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-16255:latest"
+  },
+  {
+   "instance_id": "django__django-16910",
+   "repo": "django/django",
+   "version": "5.0",
+   "base_commit": "4142739af1cda53581af4169dbe16d6cd5e26948",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-16910:latest"
+  },
+  {
+   "instance_id": "django__django-17051",
+   "repo": "django/django",
+   "version": "5.0",
+   "base_commit": "b7a17b0ea0a2061bae752a3a2292007d41825814",
+   "image": "swebench/sweb.eval.x86_64.django_1776_django-17051:latest"
+  },
+  {
+   "instance_id": "matplotlib__matplotlib-22835",
+   "repo": "matplotlib/matplotlib",
+   "version": "3.5",
+   "base_commit": "c33557d120eefe3148ebfcf2e758ff2357966000",
+   "image": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-22835:latest"
+  },
+  {
+   "instance_id": "matplotlib__matplotlib-23476",
+   "repo": "matplotlib/matplotlib",
+   "version": "3.5",
+   "base_commit": "33a0599711d26dc2b79f851c6daed4947df7c167",
+   "image": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-23476:latest"
+  },
+  {
+   "instance_id": "psf__requests-2148",
+   "repo": "psf/requests",
+   "version": "2.3",
+   "base_commit": "fe693c492242ae532211e0c173324f09ca8cf227",
+   "image": "swebench/sweb.eval.x86_64.psf_1776_requests-2148:latest"
+  },
+  {
+   "instance_id": "pydata__xarray-5131",
+   "repo": "pydata/xarray",
+   "version": "0.12",
+   "base_commit": "e56905889c836c736152b11a7e6117a229715975",
+   "image": "swebench/sweb.eval.x86_64.pydata_1776_xarray-5131:latest"
+  },
+  {
+   "instance_id": "pylint-dev__pylint-5859",
+   "repo": "pylint-dev/pylint",
+   "version": "2.13",
+   "base_commit": "182cc539b8154c0710fcea7e522267e42eba8899",
+   "image": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-5859:latest"
+  },
+  {
+   "instance_id": "pytest-dev__pytest-5221",
+   "repo": "pytest-dev/pytest",
+   "version": "4.4",
+   "base_commit": "4a2fdce62b73944030cff9b3e52862868ca9584d",
+   "image": "swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-5221:latest"
+  },
+  {
+   "instance_id": "pytest-dev__pytest-6116",
+   "repo": "pytest-dev/pytest",
+   "version": "5.2",
+   "base_commit": "e670ff76cbad80108bde9bab616b66771b8653cf",
+   "image": "swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-6116:latest"
+  },
+  {
+   "instance_id": "scikit-learn__scikit-learn-10949",
+   "repo": "scikit-learn/scikit-learn",
+   "version": "0.20",
+   "base_commit": "3b5abf76597ce6aff76192869f92647c1b5259e7",
+   "image": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10949:latest"
+  },
+  {
+   "instance_id": "scikit-learn__scikit-learn-25570",
+   "repo": "scikit-learn/scikit-learn",
+   "version": "1.3",
+   "base_commit": "cd25abee0ad0ac95225d4a9be8948eff69f49690",
+   "image": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-25570:latest"
+  },
+  {
+   "instance_id": "sphinx-doc__sphinx-8273",
+   "repo": "sphinx-doc/sphinx",
+   "version": "3.3",
+   "base_commit": "88b81a06eb635a1596617f8971fa97a84c069e93",
+   "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8273:latest"
+  },
+  {
+   "instance_id": "sphinx-doc__sphinx-8713",
+   "repo": "sphinx-doc/sphinx",
+   "version": "4.0",
+   "base_commit": "3ed7590ed411bd93b26098faab4f23619cdb2267",
+   "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8713:latest"
+  },
+  {
+   "instance_id": "sympy__sympy-11400",
+   "repo": "sympy/sympy",
+   "version": "1.0",
+   "base_commit": "8dcb12a6cf500e8738d6729ab954a261758f49ca",
+   "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-11400:latest"
+  },
+  {
+   "instance_id": "sympy__sympy-12481",
+   "repo": "sympy/sympy",
+   "version": "1.0",
+   "base_commit": "c807dfe7569692cad24f02a08477b70c1679a4dd",
+   "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12481:latest"
+  },
+  {
+   "instance_id": "sympy__sympy-13971",
+   "repo": "sympy/sympy",
+   "version": "1.1",
+   "base_commit": "84c125972ad535b2dfb245f8d311d347b45e5b8a",
+   "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-13971:latest"
+  },
+  {
+   "instance_id": "sympy__sympy-15308",
+   "repo": "sympy/sympy",
+   "version": "1.4",
+   "base_commit": "fb59d703e6863ed803c98177b59197b5513332e9",
+   "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-15308:latest"
+  },
+  {
+   "instance_id": "sympy__sympy-17630",
+   "repo": "sympy/sympy",
+   "version": "1.5",
+   "base_commit": "58e78209c8577b9890e957b624466e5beed7eb08",
+   "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-17630:latest"
+  },
+  {
+   "instance_id": "sympy__sympy-20212",
+   "repo": "sympy/sympy",
+   "version": "1.7",
+   "base_commit": "a106f4782a9dbe7f8fd16030f15401d977e03ae9",
+   "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-20212:latest"
+  },
+  {
+   "instance_id": "sympy__sympy-23262",
+   "repo": "sympy/sympy",
+   "version": "1.11",
+   "base_commit": "fdc707f73a65a429935c01532cd3970d3355eab6",
+   "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-23262:latest"
+  }
+ ]
+}
