@@ -1,0 +1,273 @@
+2026-07-13 21:56:39,712 - INFO - Creating container for sphinx-doc__sphinx-8273...
+2026-07-13 21:56:40,315 - INFO - Container for sphinx-doc__sphinx-8273 created: 3d1b4a2267c40f4fa61f361ee703507290d2fcfbff9befca129838bf34badd34
+2026-07-13 21:56:40,439 - INFO - Container for sphinx-doc__sphinx-8273 started: 3d1b4a2267c40f4fa61f361ee703507290d2fcfbff9befca129838bf34badd34
+2026-07-13 21:56:40,439 - INFO - Intermediate patch for sphinx-doc__sphinx-8273 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/sphinx-doc__sphinx-8273/patch.diff, now applying to container...
+2026-07-13 21:56:40,587 - INFO - >>>>> Applied Patch:
+Checking patch CHANGES...
+Checking patch doc/usage/configuration.rst...
+Checking patch sphinx/builders/manpage.py...
+Checking patch tests/test_build_manpage.py...
+Applied patch CHANGES cleanly.
+Applied patch doc/usage/configuration.rst cleanly.
+Applied patch sphinx/builders/manpage.py cleanly.
+Applied patch tests/test_build_manpage.py cleanly.
+
+2026-07-13 21:56:40,823 - INFO - Git diff before:
+diff --git a/CHANGES b/CHANGES
+index df70ab46e..f5b212c31 100644
+--- a/CHANGES
++++ b/CHANGES
+@@ -22,6 +22,8 @@ Features added
+   nested declarations.
+ * #8081: LaTeX: Allow to add LaTeX package via ``app.add_latex_package()`` until
+   just before writing .tex file
++* #7996: manpage: Add :confval:`man_make_section_directory` to make section
++  directories on build man page
+ 
+ Bugs fixed
+ ----------
+diff --git a/doc/usage/configuration.rst b/doc/usage/configuration.rst
+index 3fc3a5306..270fcbf33 100644
+--- a/doc/usage/configuration.rst
++++ b/doc/usage/configuration.rst
+@@ -2245,6 +2245,12 @@ These options influence manual page output.
+ 
+    .. versionadded:: 1.1
+ 
++.. confval:: man_make_section_directory
++
++   If true, make a section directory on build man page.  Default is False.
++
++   .. versionadded:: 3.3
++
+ 
+ .. _texinfo-options:
+ 
+diff --git a/setup.py b/setup.py
+index a404f1fa5..2c6848797 100644
+--- a/setup.py
++++ b/setup.py
+@@ -15,22 +15,22 @@ if sys.version_info < (3, 5):
+     sys.exit(1)
+ 
+ install_requires = [
+-    'sphinxcontrib-applehelp',
+-    'sphinxcontrib-devhelp',
++    'sphinxcontrib-applehelp<=1.0.7',
++    'sphinxcontrib-devhelp<=1.0.5',
+     'sphinxcontrib-jsmath',
+-    'sphinxcontrib-htmlhelp',
+-    'sphinxcontrib-serializinghtml',
+-    'sphinxcontrib-qthelp',
+-    'Jinja2>=2.3',
++    'sphinxcontrib-htmlhelp<=2.0.4',
++    'sphinxcontrib-serializinghtml<=1.1.9',
++    'sphinxcontrib-qthelp<=1.0.6',
++    'Jinja2<3.0',
+     'Pygments>=2.0',
+     'docutils>=0.12',
+     'snowballstemmer>=1.1',
+     'babel>=1.3',
+-    'alabaster>=0.7,<0.8',
++    'alabaster>=0.7,<0.7.12',
+     'imagesize',
+     'requests>=2.5.0',
+     'setuptools',
+-    'packaging',
++    'packaging', 'markupsafe<=2.0.1',
+ ]
+ 
+ extras_require = {
+diff --git a/sphinx/builders/manpage.py b/sphinx/builders/manpage.py
+index 4166dece9..a6f3f5acc 100644
+--- a/sphinx/builders/manpage.py
++++ b/sphinx/builders/manpage.py
+@@ -24,7 +24,7 @@ from sphinx.util import logging
+ from sphinx.util import progress_message
+ from sphinx.util.console import darkgreen  # type: ignore
+ from sphinx.util.nodes import inline_all_toctrees
+-from sphinx.util.osutil import make_filename_from_project
++from sphinx.util.osutil import make_filename_from_project, ensuredir
+ from sphinx.writers.manpage import ManualPageWriter, ManualPageTranslator
+ 
+ 
+@@ -82,8 +82,13 @@ class ManualPageBuilder(Builder):
+ 
+             targetname = '%s.%s' % (name, section)
+             logger.info(darkgreen(targetname) + ' { ', nonl=True)
++            destination_path = path.join(self.outdir, targetname)
++            if self.config.man_make_section_directory:
++                dirname = 'man%s' % section
++                ensuredir(path.join(self.outdir, dirname))
++                destination_path = path.join(self.outdir, dirname, targetname)
+             destination = FileOutput(
+-                destination_path=path.join(self.outdir, targetname),
++                destination_path=destination_path,
+                 encoding='utf-8')
+ 
+             tree = self.env.get_doctree(docname)
+@@ -115,6 +120,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
+ 
+     app.add_config_value('man_pages', default_man_pages, None)
+     app.add_config_value('man_show_urls', False, None)
++    app.add_config_value('man_make_section_directory', False, None)
+ 
+     return {
+         'version': 'builtin',
+diff --git a/tests/test_build_manpage.py b/tests/test_build_manpage.py
+index c3c41a2ae..aaa4fac50 100644
+--- a/tests/test_build_manpage.py
++++ b/tests/test_build_manpage.py
+@@ -30,6 +30,12 @@ def test_all(app, status, warning):
+     assert 'Footnotes' not in content
+ 
+ 
++@pytest.mark.sphinx('man', testroot='basic', confoverrides={'man_make_section_directory': True})
++def test_man_make_section_directory(app, status, warning):
++    app.builder.build_all()
++    assert (app.outdir / 'man1' / 'python.1').exists()
++
++
+ @pytest.mark.sphinx('man', testroot='directive-code')
+ def test_captioned_code_block(app, status, warning):
+     app.builder.build_all()
+diff --git a/tox.ini b/tox.ini
+index a61299979..e2baccc07 100644
+--- a/tox.ini
++++ b/tox.ini
+@@ -28,7 +28,7 @@ setenv =
+     PYTHONWARNINGS = all,ignore::ImportWarning:importlib._bootstrap_external,ignore::DeprecationWarning:site,ignore::DeprecationWarning:distutils
+     PYTEST_ADDOPTS = --color yes
+ commands=
+-    pytest --durations 25 {posargs}
++    pytest -rA --durations 25 {posargs}
+ 
+ [testenv:flake8]
+ basepython = python3
+2026-07-13 21:56:40,823 - INFO - Eval script for sphinx-doc__sphinx-8273 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/sphinx-doc__sphinx-8273/eval.sh; copying to container...
+2026-07-13 21:56:46,208 - INFO - Test runtime: 5.34 seconds
+2026-07-13 21:56:46,209 - INFO - Test output for sphinx-doc__sphinx-8273 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/sphinx-doc__sphinx-8273/test_output.txt
+2026-07-13 21:56:46,296 - INFO - Git diff after:
+diff --git a/CHANGES b/CHANGES
+index df70ab46e..f5b212c31 100644
+--- a/CHANGES
++++ b/CHANGES
+@@ -22,6 +22,8 @@ Features added
+   nested declarations.
+ * #8081: LaTeX: Allow to add LaTeX package via ``app.add_latex_package()`` until
+   just before writing .tex file
++* #7996: manpage: Add :confval:`man_make_section_directory` to make section
++  directories on build man page
+ 
+ Bugs fixed
+ ----------
+diff --git a/doc/usage/configuration.rst b/doc/usage/configuration.rst
+index 3fc3a5306..270fcbf33 100644
+--- a/doc/usage/configuration.rst
++++ b/doc/usage/configuration.rst
+@@ -2245,6 +2245,12 @@ These options influence manual page output.
+ 
+    .. versionadded:: 1.1
+ 
++.. confval:: man_make_section_directory
++
++   If true, make a section directory on build man page.  Default is False.
++
++   .. versionadded:: 3.3
++
+ 
+ .. _texinfo-options:
+ 
+diff --git a/setup.py b/setup.py
+index a404f1fa5..2c6848797 100644
+--- a/setup.py
++++ b/setup.py
+@@ -15,22 +15,22 @@ if sys.version_info < (3, 5):
+     sys.exit(1)
+ 
+ install_requires = [
+-    'sphinxcontrib-applehelp',
+-    'sphinxcontrib-devhelp',
++    'sphinxcontrib-applehelp<=1.0.7',
++    'sphinxcontrib-devhelp<=1.0.5',
+     'sphinxcontrib-jsmath',
+-    'sphinxcontrib-htmlhelp',
+-    'sphinxcontrib-serializinghtml',
+-    'sphinxcontrib-qthelp',
+-    'Jinja2>=2.3',
++    'sphinxcontrib-htmlhelp<=2.0.4',
++    'sphinxcontrib-serializinghtml<=1.1.9',
++    'sphinxcontrib-qthelp<=1.0.6',
++    'Jinja2<3.0',
+     'Pygments>=2.0',
+     'docutils>=0.12',
+     'snowballstemmer>=1.1',
+     'babel>=1.3',
+-    'alabaster>=0.7,<0.8',
++    'alabaster>=0.7,<0.7.12',
+     'imagesize',
+     'requests>=2.5.0',
+     'setuptools',
+-    'packaging',
++    'packaging', 'markupsafe<=2.0.1',
+ ]
+ 
+ extras_require = {
+diff --git a/sphinx/builders/manpage.py b/sphinx/builders/manpage.py
+index 4166dece9..a6f3f5acc 100644
+--- a/sphinx/builders/manpage.py
++++ b/sphinx/builders/manpage.py
+@@ -24,7 +24,7 @@ from sphinx.util import logging
+ from sphinx.util import progress_message
+ from sphinx.util.console import darkgreen  # type: ignore
+ from sphinx.util.nodes import inline_all_toctrees
+-from sphinx.util.osutil import make_filename_from_project
++from sphinx.util.osutil import make_filename_from_project, ensuredir
+ from sphinx.writers.manpage import ManualPageWriter, ManualPageTranslator
+ 
+ 
+@@ -82,8 +82,13 @@ class ManualPageBuilder(Builder):
+ 
+             targetname = '%s.%s' % (name, section)
+             logger.info(darkgreen(targetname) + ' { ', nonl=True)
++            destination_path = path.join(self.outdir, targetname)
++            if self.config.man_make_section_directory:
++                dirname = 'man%s' % section
++                ensuredir(path.join(self.outdir, dirname))
++                destination_path = path.join(self.outdir, dirname, targetname)
+             destination = FileOutput(
+-                destination_path=path.join(self.outdir, targetname),
++                destination_path=destination_path,
+                 encoding='utf-8')
+ 
+             tree = self.env.get_doctree(docname)
+@@ -115,6 +120,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
+ 
+     app.add_config_value('man_pages', default_man_pages, None)
+     app.add_config_value('man_show_urls', False, None)
++    app.add_config_value('man_make_section_directory', False, None)
+ 
+     return {
+         'version': 'builtin',
+diff --git a/tox.ini b/tox.ini
+index a61299979..e2baccc07 100644
+--- a/tox.ini
++++ b/tox.ini
+@@ -28,7 +28,7 @@ setenv =
+     PYTHONWARNINGS = all,ignore::ImportWarning:importlib._bootstrap_external,ignore::DeprecationWarning:site,ignore::DeprecationWarning:distutils
+     PYTEST_ADDOPTS = --color yes
+ commands=
+-    pytest --durations 25 {posargs}
++    pytest -rA --durations 25 {posargs}
+ 
+ [testenv:flake8]
+ basepython = python3
+2026-07-13 21:56:46,296 - INFO - Git diff changed after running eval script
+2026-07-13 21:56:46,297 - INFO - Grading answer for sphinx-doc__sphinx-8273...
+2026-07-13 21:56:46,300 - INFO - report: {'sphinx-doc__sphinx-8273': {'patch_is_None': False, 'patch_exists': True, 'patch_successfully_applied': True, 'resolved': False, 'tests_status': {'FAIL_TO_PASS': {'success': [], 'failure': ['tests/test_build_manpage.py::test_man_make_section_directory']}, 'PASS_TO_PASS': {'success': ['tests/test_build_manpage.py::test_all', 'tests/test_build_manpage.py::test_default_man_pages', 'tests/test_build_manpage.py::test_rubric'], 'failure': []}, 'FAIL_TO_FAIL': {'success': [], 'failure': []}, 'PASS_TO_FAIL': {'success': [], 'failure': []}}}}
+Result for sphinx-doc__sphinx-8273: resolved: False
+2026-07-13 21:56:46,300 - INFO - Attempting to stop container sweb.eval.sphinx-doc__sphinx-8273.w3-sonnet-variance...
+2026-07-13 21:57:01,386 - INFO - Attempting to remove container sweb.eval.sphinx-doc__sphinx-8273.w3-sonnet-variance...
+2026-07-13 21:57:01,401 - INFO - Container sweb.eval.sphinx-doc__sphinx-8273.w3-sonnet-variance removed.
+2026-07-13 21:57:01,401 - INFO - Attempting to remove image swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8273:latest...
+2026-07-13 21:57:01,507 - INFO - Image swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8273:latest removed.

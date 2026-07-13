@@ -1,0 +1,120 @@
+{
+  "astropy__astropy-6938": {
+    "status": "patched",
+    "patch_file": "2026-07-13T071529_astropy__astropy-6938.patch"
+  },
+  "django__django-10924": {
+    "status": "patched",
+    "patch_file": "2026-07-13T072027_django__django-10924.patch"
+  },
+  "django__django-11620": {
+    "status": "patched",
+    "patch_file": "2026-07-13T072346_django__django-11620.patch"
+  },
+  "django__django-11999": {
+    "status": "patched",
+    "patch_file": "2026-07-13T072713_django__django-11999.patch"
+  },
+  "django__django-12915": {
+    "status": "patched",
+    "patch_file": "2026-07-13T072936_django__django-12915.patch"
+  },
+  "django__django-13315": {
+    "status": "patched",
+    "patch_file": "2026-07-13T132222_django__django-13315.patch"
+  },
+  "django__django-13448": {
+    "status": "patched",
+    "patch_file": "2026-07-13T132557_django__django-13448.patch"
+  },
+  "django__django-14580": {
+    "status": "patched",
+    "patch_file": "2026-07-13T133047_django__django-14580.patch"
+  },
+  "django__django-14672": {
+    "status": "patched",
+    "patch_file": "2026-07-13T133222_django__django-14672.patch"
+  },
+  "django__django-16255": {
+    "status": "patched",
+    "patch_file": "2026-07-13T133325_django__django-16255.patch"
+  },
+  "django__django-16910": {
+    "status": "patched",
+    "patch_file": "2026-07-13T133410_django__django-16910.patch"
+  },
+  "django__django-17051": {
+    "status": "no-patch"
+  },
+  "matplotlib__matplotlib-22835": {
+    "status": "patched",
+    "patch_file": "2026-07-13T134259_matplotlib__matplotlib-22835.patch"
+  },
+  "matplotlib__matplotlib-23476": {
+    "status": "patched",
+    "patch_file": "2026-07-13T134627_matplotlib__matplotlib-23476.patch"
+  },
+  "psf__requests-2148": {
+    "status": "patched",
+    "patch_file": "2026-07-13T135047_psf__requests-2148.patch"
+  },
+  "pydata__xarray-5131": {
+    "status": "patched",
+    "patch_file": "2026-07-13T135401_pydata__xarray-5131.patch"
+  },
+  "pylint-dev__pylint-5859": {
+    "status": "patched",
+    "patch_file": "2026-07-13T135546_pylint-dev__pylint-5859.patch"
+  },
+  "pytest-dev__pytest-5221": {
+    "status": "patched",
+    "patch_file": "2026-07-13T140555_pytest-dev__pytest-5221.patch"
+  },
+  "pytest-dev__pytest-6116": {
+    "status": "patched",
+    "patch_file": "2026-07-13T140735_pytest-dev__pytest-6116.patch"
+  },
+  "scikit-learn__scikit-learn-10949": {
+    "status": "patched",
+    "patch_file": "2026-07-13T140940_scikit-learn__scikit-learn-10949.patch"
+  },
+  "scikit-learn__scikit-learn-25570": {
+    "status": "patched",
+    "patch_file": "2026-07-13T141406_scikit-learn__scikit-learn-25570.patch"
+  },
+  "sphinx-doc__sphinx-8273": {
+    "status": "patched",
+    "patch_file": "2026-07-13T141737_sphinx-doc__sphinx-8273.patch"
+  },
+  "sphinx-doc__sphinx-8713": {
+    "status": "patched",
+    "patch_file": "2026-07-13T141935_sphinx-doc__sphinx-8713.patch"
+  },
+  "sympy__sympy-11400": {
+    "status": "patched",
+    "patch_file": "2026-07-13T142206_sympy__sympy-11400.patch"
+  },
+  "sympy__sympy-12481": {
+    "status": "patched",
+    "patch_file": "2026-07-13T142515_sympy__sympy-12481.patch"
+  },
+  "sympy__sympy-13971": {
+    "status": "patched",
+    "patch_file": "2026-07-13T142829_sympy__sympy-13971.patch"
+  },
+  "sympy__sympy-15308": {
+    "status": "patched",
+    "patch_file": "2026-07-13T142952_sympy__sympy-15308.patch"
+  },
+  "sympy__sympy-17630": {
+    "status": "no-patch"
+  },
+  "sympy__sympy-20212": {
+    "status": "patched",
+    "patch_file": "2026-07-13T143529_sympy__sympy-20212.patch"
+  },
+  "sympy__sympy-23262": {
+    "status": "patched",
+    "patch_file": "2026-07-13T144027_sympy__sympy-23262.patch"
+  }
+}

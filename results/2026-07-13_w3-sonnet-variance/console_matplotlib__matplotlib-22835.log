@@ -1,0 +1,18 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T134259_matplotlib__matplotlib-22835.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-22835:latest container=swb-576486e90951 workdir=/testbed preloaded=True]
+No circular import issues. The fix works correctly.
+
+## Summary
+
+The bug was in `Artist.format_cursor_data` in `lib/matplotlib/artist.py`. When a `ScalarMappable` artist (like an `AxesImage`) uses a `BoundaryNorm`, hovering the mouse over it calls `format_cursor_data`, which tried to call `self.norm.inverse(...)` to compute neighboring values for determining significant digits to display. However, `BoundaryNorm.inverse()` is intentionally not invertible and raises a `ValueError`, crashing the interactive cursor callback.
+
+**Fix**: In `format_cursor_data`, detect when `self.norm` is a `BoundaryNorm` and, instead of calling the (non-existent) inverse mapping, compute the local "delta" directly from the norm's `boundaries` array (looking at the boundary nearest the data value and its neighbor) to determine appropriate significant digits. For all other (invertible) norms, the original midpoint-based calculation is preserved.
+
+Changes made:
+- Added `colors as mcolors` to the imports in `lib/matplotlib/artist.py`.
+- In `format_cursor_data`, added a branch: if `isinstance(self.norm, mcolors.BoundaryNorm)`, compute `delta` from the boundaries array around the nearest boundary index instead of calling `self.norm.inverse`.
+
+Verified with the reproduction script that `format_cursor_data` no longer raises, and existing tests in `test_artist.py` and `test_image.py` (except two unrelated pre-existing failures — network access test and a pre-existing quantity-ndarray test failure confirmed to fail on `main` without this change) still pass.
+
+[end_turn after 15 turn(s) | tokens in=933 out=3018 | cost=$0.072563 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T134259_matplotlib__matplotlib-22835.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T134259_matplotlib__matplotlib-22835.patch (1700 bytes)]

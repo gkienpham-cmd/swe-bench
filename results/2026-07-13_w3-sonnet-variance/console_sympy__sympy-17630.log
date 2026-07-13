@@ -1,0 +1,4 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T143118_sympy__sympy-17630.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.sympy_1776_sympy-17630:latest container=swb-46ce4a6ae8e6 workdir=/testbed preloaded=True]
+[hit max_turns=40 without end_turn | cost=$0.249305 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T143118_sympy__sympy-17630.jsonl]
+[patch: empty or extraction failed — final_git_diff meta line logged]

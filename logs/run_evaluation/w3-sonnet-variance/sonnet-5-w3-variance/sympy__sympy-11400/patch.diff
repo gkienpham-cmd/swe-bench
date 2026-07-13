@@ -1,0 +1,99 @@
+diff --git a/sympy/printing/ccode.py b/sympy/printing/ccode.py
+index 30a07a7b59..b46bede138 100644
+--- a/sympy/printing/ccode.py
++++ b/sympy/printing/ccode.py
+@@ -218,6 +218,15 @@ def _print_ITE(self, expr):
+         _piecewise = Piecewise((expr.args[1], expr.args[0]), (expr.args[2], True))
+         return self._print(_piecewise)
+ 
++    def _print_sinc(self, expr):
++        from sympy.functions.elementary.trigonometric import sin
++        from sympy.core.relational import Ne
++        from sympy.functions import Piecewise
++        _piecewise = Piecewise(
++            (sin(expr.args[0]) / expr.args[0], Ne(expr.args[0], 0)),
++            (1, True))
++        return self._print(_piecewise)
++
+     def _print_MatrixElement(self, expr):
+         return "{0}[{1}]".format(expr.parent, expr.j +
+                 expr.i*expr.parent.shape[1])
+diff --git a/sympy/printing/fcode.py b/sympy/printing/fcode.py
+index 9e6fd6cdb4..7cba9c3169 100644
+--- a/sympy/printing/fcode.py
++++ b/sympy/printing/fcode.py
+@@ -170,6 +170,15 @@ def _print_Piecewise(self, expr):
+                                       "inline operators is not supported in "
+                                       "standards earlier than Fortran95.")
+ 
++    def _print_sinc(self, expr):
++        from sympy.functions.elementary.trigonometric import sin
++        from sympy.core.relational import Ne
++        from sympy.functions import Piecewise
++        _piecewise = Piecewise(
++            (sin(expr.args[0]) / expr.args[0], Ne(expr.args[0], 0)),
++            (1, True))
++        return self._print(_piecewise)
++
+     def _print_MatrixElement(self, expr):
+         return "{0}({1}, {2})".format(expr.parent, expr.i + 1, expr.j + 1)
+ 
+diff --git a/sympy/printing/tests/test_ccode.py b/sympy/printing/tests/test_ccode.py
+index d8e449d853..1cb98d4312 100644
+--- a/sympy/printing/tests/test_ccode.py
++++ b/sympy/printing/tests/test_ccode.py
+@@ -1,7 +1,7 @@
+ from sympy.core import (pi, oo, symbols, Rational, Integer,
+                         GoldenRatio, EulerGamma, Catalan, Lambda, Dummy, Eq)
+ from sympy.functions import (Piecewise, sin, cos, Abs, exp, ceiling, sqrt,
+-                             gamma, sign)
++                             gamma, sign, sinc)
+ from sympy.sets import Range
+ from sympy.logic import ITE
+ from sympy.codegen import For, aug_assign, Assignment
+@@ -479,6 +479,17 @@ def test_ccode_sign():
+     expr = sign(cos(x))
+     assert ccode(expr) == '(((cos(x)) > 0) - ((cos(x)) < 0))'
+ 
++def test_ccode_sinc():
++    expr = sinc(x)
++    assert ccode(expr) == (
++            "((Ne(x, 0)) ? (\n"
++            "   sin(x)/x\n"
++            ")\n"
++            ": (\n"
++            "   1\n"
++            "))")
++
++
+ def test_ccode_Assignment():
+     assert ccode(Assignment(x, y + z)) == 'x = y + z;'
+     assert ccode(aug_assign(x, '+', y + z)) == 'x += y + z;'
+diff --git a/sympy/printing/tests/test_fcode.py b/sympy/printing/tests/test_fcode.py
+index aacd6a72cb..cc07f794d9 100644
+--- a/sympy/printing/tests/test_fcode.py
++++ b/sympy/printing/tests/test_fcode.py
+@@ -1,6 +1,7 @@
+ from sympy import (sin, cos, atan2, log, exp, gamma, conjugate, sqrt,
+     factorial, Integral, Piecewise, Add, diff, symbols, S, Float, Dummy, Eq,
+-    Range, Catalan, EulerGamma, E, GoldenRatio, I, pi, Function, Rational, Integer, Lambda)
++    Range, Catalan, EulerGamma, E, GoldenRatio, I, pi, Function, Rational, Integer, Lambda,
++    sinc)
+ 
+ from sympy.codegen import For, Assignment
+ from sympy.core.relational import Relational
+@@ -394,6 +395,14 @@ def test_fcode_Piecewise():
+     raises(ValueError, lambda: fcode(expr))
+ 
+ 
++def test_fcode_sinc():
++    x = symbols('x')
++    expr = sinc(x)
++    code = fcode(expr, standard=95)
++    expected = "      merge(sin(x)/x, 1, Ne(x, 0))"
++    assert code == expected
++
++
+ def test_wrap_fortran():
+     #   "########################################################################"
+     printer = FCodePrinter()

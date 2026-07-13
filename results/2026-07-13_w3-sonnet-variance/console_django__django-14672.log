@@ -1,0 +1,6 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T133222_django__django-14672.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.django_1776_django-14672:latest container=swb-99e70eb09850 workdir=/testbed preloaded=True]
+All tests pass. The fix is complete: added `make_hashable` call on `self.through_fields` in `ManyToManyRel.identity` property in `django/db/models/fields/reverse_related.py`, since `make_hashable` was already imported in that file.
+
+[end_turn after 9 turn(s) | tokens in=2945 out=1334 | cost=$0.054445 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T133222_django__django-14672.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T133222_django__django-14672.patch (512 bytes)]

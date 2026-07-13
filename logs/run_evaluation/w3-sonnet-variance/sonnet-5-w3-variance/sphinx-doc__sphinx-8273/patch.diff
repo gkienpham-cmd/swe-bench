@@ -1,0 +1,83 @@
+diff --git a/CHANGES b/CHANGES
+index df70ab46e..f5b212c31 100644
+--- a/CHANGES
++++ b/CHANGES
+@@ -22,6 +22,8 @@ Features added
+   nested declarations.
+ * #8081: LaTeX: Allow to add LaTeX package via ``app.add_latex_package()`` until
+   just before writing .tex file
++* #7996: manpage: Add :confval:`man_make_section_directory` to make section
++  directories on build man page
+ 
+ Bugs fixed
+ ----------
+diff --git a/doc/usage/configuration.rst b/doc/usage/configuration.rst
+index 3fc3a5306..270fcbf33 100644
+--- a/doc/usage/configuration.rst
++++ b/doc/usage/configuration.rst
+@@ -2245,6 +2245,12 @@ These options influence manual page output.
+ 
+    .. versionadded:: 1.1
+ 
++.. confval:: man_make_section_directory
++
++   If true, make a section directory on build man page.  Default is False.
++
++   .. versionadded:: 3.3
++
+ 
+ .. _texinfo-options:
+ 
+diff --git a/sphinx/builders/manpage.py b/sphinx/builders/manpage.py
+index 4166dece9..a6f3f5acc 100644
+--- a/sphinx/builders/manpage.py
++++ b/sphinx/builders/manpage.py
+@@ -24,7 +24,7 @@ from sphinx.util import logging
+ from sphinx.util import progress_message
+ from sphinx.util.console import darkgreen  # type: ignore
+ from sphinx.util.nodes import inline_all_toctrees
+-from sphinx.util.osutil import make_filename_from_project
++from sphinx.util.osutil import make_filename_from_project, ensuredir
+ from sphinx.writers.manpage import ManualPageWriter, ManualPageTranslator
+ 
+ 
+@@ -82,8 +82,13 @@ class ManualPageBuilder(Builder):
+ 
+             targetname = '%s.%s' % (name, section)
+             logger.info(darkgreen(targetname) + ' { ', nonl=True)
++            destination_path = path.join(self.outdir, targetname)
++            if self.config.man_make_section_directory:
++                dirname = 'man%s' % section
++                ensuredir(path.join(self.outdir, dirname))
++                destination_path = path.join(self.outdir, dirname, targetname)
+             destination = FileOutput(
+-                destination_path=path.join(self.outdir, targetname),
++                destination_path=destination_path,
+                 encoding='utf-8')
+ 
+             tree = self.env.get_doctree(docname)
+@@ -115,6 +120,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
+ 
+     app.add_config_value('man_pages', default_man_pages, None)
+     app.add_config_value('man_show_urls', False, None)
++    app.add_config_value('man_make_section_directory', False, None)
+ 
+     return {
+         'version': 'builtin',
+diff --git a/tests/test_build_manpage.py b/tests/test_build_manpage.py
+index c3c41a2ae..aaa4fac50 100644
+--- a/tests/test_build_manpage.py
++++ b/tests/test_build_manpage.py
+@@ -30,6 +30,12 @@ def test_all(app, status, warning):
+     assert 'Footnotes' not in content
+ 
+ 
++@pytest.mark.sphinx('man', testroot='basic', confoverrides={'man_make_section_directory': True})
++def test_man_make_section_directory(app, status, warning):
++    app.builder.build_all()
++    assert (app.outdir / 'man1' / 'python.1').exists()
++
++
+ @pytest.mark.sphinx('man', testroot='directive-code')
+ def test_captioned_code_block(app, status, warning):
+     app.builder.build_all()

@@ -1,0 +1,52 @@
+diff --git a/ChangeLog b/ChangeLog
+index b6ba4becf..8140ede44 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -33,6 +33,10 @@ Release date: TBA
+ 
+   closes #5722
+ 
++* Fix ``--notes`` option so that it does not ignore note tags that are entirely punctuation.
++
++  Closes #5566
++
+ * Fixed crash from ``arguments-differ`` and ``arguments-renamed`` when methods were
+   defined outside the top level of a class.
+ 
+diff --git a/pylint/checkers/misc.py b/pylint/checkers/misc.py
+index 69149e61a..99ebb13da 100644
+--- a/pylint/checkers/misc.py
++++ b/pylint/checkers/misc.py
+@@ -121,9 +121,9 @@ class EncodingChecker(BaseChecker):
+ 
+         notes = "|".join(re.escape(note) for note in self.config.notes)
+         if self.config.notes_rgx:
+-            regex_string = rf"#\s*({notes}|{self.config.notes_rgx})\b"
++            regex_string = rf"#\s*({notes}|{self.config.notes_rgx})(?=(?:\W|$))"
+         else:
+-            regex_string = rf"#\s*({notes})\b"
++            regex_string = rf"#\s*({notes})(?=(?:\W|$))"
+ 
+         self._fixme_pattern = re.compile(regex_string, re.I)
+ 
+diff --git a/tests/checkers/unittest_misc.py b/tests/checkers/unittest_misc.py
+index 23e19a9d0..746d9a956 100644
+--- a/tests/checkers/unittest_misc.py
++++ b/tests/checkers/unittest_misc.py
+@@ -106,6 +106,16 @@ class TestFixme(CheckerTestCase):
+         ):
+             self.checker.process_tokens(_tokenize_str(code))
+ 
++    @set_config(notes=["???"])
++    def test_punctuation_notes(self) -> None:
++        code = """a = 1
++                # ???
++                """
++        with self.assertAddsMessages(
++            MessageTest(msg_id="fixme", line=2, args="???", col_offset=17)
++        ):
++            self.checker.process_tokens(_tokenize_str(code))
++
+     def test_dont_trigger_on_todoist(self) -> None:
+         code = """
+         # Todoist API: What is this task about?

@@ -1,0 +1,19 @@
+diff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py
+index 781dfd5499..1684b1b9ab 100644
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -779,7 +779,13 @@ class Query(BaseExpression):
+         # Only include fields mentioned in the mask.
+         for field_name, field_mask in mask.items():
+             field = opts.get_field(field_name)
+-            field_select_mask = select_mask.setdefault(field, {})
++            # Retrieve the actual field associated with reverse relationships
++            # as that's what is expected in the select mask.
++            if nested_field := getattr(field, "field", None):
++                field_key = nested_field
++            else:
++                field_key = field
++            field_select_mask = select_mask.setdefault(field_key, {})
+             if field_mask:
+                 if not field.is_relation:
+                     raise FieldError(next(iter(field_mask)))

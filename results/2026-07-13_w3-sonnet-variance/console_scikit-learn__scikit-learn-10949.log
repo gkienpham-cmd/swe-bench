@@ -1,0 +1,24 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T140940_scikit-learn__scikit-learn-10949.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10949:latest container=swb-716f91358a0c workdir=/testbed preloaded=True]
+This fixes the issue: when the input is a pandas DataFrame, `check_array` now inspects `array.dtypes` (since DataFrames don't have a single `.dtype`) and issues a `DataConversionWarning` when any column's original dtype differs from the resulting numpy array's dtype after conversion.
+
+Summary of the fix in `sklearn/utils/validation.py`:
+- Added detection of `dtypes_orig` from `array.dtypes` for objects like pandas DataFrames that expose multiple per-column dtypes rather than a single `.dtype`.
+- Extended the `warn_on_dtype` check: if `dtype_orig` (single dtype) path doesn't apply, fall back to comparing `dtypes_orig` against the converted array's dtype, and issue a `DataConversionWarning` if any of the original column dtypes differ from the final dtype.
+
+Verified with the reproduction case:
+```python
+from sklearn.utils.validation import check_array
+import pandas as pd
+df = pd.DataFrame([[1, 2, 3], [2, 3, 4]], dtype=object)
+checked = check_array(df, warn_on_dtype=True)
+```
+now correctly raises:
+```
+DataConversionWarning: Data with input dtype object were all converted to float64.
+```
+
+Existing tests in `sklearn/utils/tests/test_validation.py` still pass (the 10 failures observed are pre-existing/unrelated, caused by an outdated `pytest.raises(..., message=...)` API usage in the test file, and occur identically on the unmodified code).
+
+[end_turn after 18 turn(s) | tokens in=815 out=3556 | cost=$0.088803 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T140940_scikit-learn__scikit-learn-10949.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T140940_scikit-learn__scikit-learn-10949.patch (1581 bytes)]

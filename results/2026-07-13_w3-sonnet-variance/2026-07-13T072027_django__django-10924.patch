@@ -1,0 +1,71 @@
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 0c64748ccd..4d7eb11151 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -1709,7 +1709,7 @@ class FilePathField(Field):
+ 
+     def formfield(self, **kwargs):
+         return super().formfield(**{
+-            'path': self.path,
++            'path': self.path() if callable(self.path) else self.path,
+             'match': self.match,
+             'recursive': self.recursive,
+             'form_class': forms.FilePathField,
+diff --git a/docs/ref/models/fields.txt b/docs/ref/models/fields.txt
+index e352e8b007..be5bb44b70 100644
+--- a/docs/ref/models/fields.txt
++++ b/docs/ref/models/fields.txt
+@@ -868,6 +868,23 @@ directory on the filesystem. Has three special arguments, of which the first is
+     Required. The absolute filesystem path to a directory from which this
+     :class:`FilePathField` should get its choices. Example: ``"/home/images"``.
+ 
++    This may also be a callable, such as a function to dynamically set the
++    path at runtime. Example::
++
++        import os
++        from django.conf import settings
++        from django.db import models
++
++        def images_path():
++            return os.path.join(settings.LOCAL_FILE_DIR, 'images')
++
++        class MyModel(models.Model):
++            file = models.FilePathField(path=images_path)
++
++    .. versionchanged:: 3.0
++
++        The ability for ``path`` to accept a callable was added.
++
+ .. attribute:: FilePathField.match
+ 
+     Optional. A regular expression, as a string, that :class:`FilePathField`
+diff --git a/tests/model_fields/test_filepathfield.py b/tests/model_fields/test_filepathfield.py
+new file mode 100644
+index 0000000000..e5d7f6b1ee
+--- /dev/null
++++ b/tests/model_fields/test_filepathfield.py
+@@ -0,0 +1,24 @@
++import os
++
++from django.db.models import FilePathField
++from django.test import SimpleTestCase
++
++install_dir = os.path.dirname(os.path.abspath(__file__))
++
++
++class FilePathFieldTests(SimpleTestCase):
++    def test_path(self):
++        path = install_dir
++        field = FilePathField(path=path)
++        self.assertEqual(field.path, path)
++        self.assertEqual(field.formfield().path, path)
++
++    def test_callable_path(self):
++        path = install_dir
++
++        def generate_path():
++            return path
++
++        field = FilePathField(path=generate_path)
++        self.assertEqual(field.path(), path)
++        self.assertEqual(field.formfield().path, path)

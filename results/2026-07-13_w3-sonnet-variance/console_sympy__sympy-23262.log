@@ -1,0 +1,38 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T144027_sympy__sympy-23262.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.sympy_1776_sympy-23262:latest container=swb-71333a694a47 workdir=/testbed preloaded=True]
+All good. 
+
+## Summary
+
+The bug was in `sympy/utilities/lambdify.py`, in the `_recursive_to_string` helper function used by the lambdify code generator to stringify Python containers (lists/tuples) passed as expressions.
+
+Previously, for tuples it always used `"()"` as the surrounding delimiters regardless of the tuple's length, so a single-element tuple `(1,)` was rendered as `"(1)"` — which Python parses as the integer `1`, not a 1-tuple.
+
+Fix: when the argument is a tuple with exactly one element, use `",)"` as the closing delimiter instead of `")"`, matching the same special-casing already present in `sympy.printing.str.StrPrinter._print_tuple`.
+
+```python
+def _recursive_to_string(doprint, arg):
+    ...
+    if isinstance(arg, (Basic, MatrixOperations)):
+        return doprint(arg)
+    elif iterable(arg):
+        if isinstance(arg, list):
+            left, right = "[", "]"
+        elif isinstance(arg, tuple):
+            left, right = "(", ",)" if len(arg) == 1 else ")"
+        else:
+            raise NotImplementedError("unhandled type: %s, %s" % (type(arg), arg))
+        return left + ', '.join(_recursive_to_string(doprint, e) for e in arg) + right
+    ...
+```
+
+Verified:
+- `lambdify([], (1,))` now generates `return (1,)` (previously `return (1)`).
+- `lambdify([], (1, 2))` still generates `return (1, 2)`.
+- `lambdify([], ())` still generates `return ()`.
+- `lambdify([], [1])` still generates `return [1]`.
+
+Existing test suites (`test_lambdify.py`, `test_lambdarepr.py`, `test_pycode.py`) all pass.
+
+[end_turn after 13 turn(s) | tokens in=492 out=2914 | cost=$0.056394 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T144027_sympy__sympy-23262.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T144027_sympy__sympy-23262.patch (864 bytes)]

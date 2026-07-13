@@ -1,0 +1,133 @@
+2026-07-13 21:45:16,486 - INFO - Creating container for django__django-11999...
+2026-07-13 21:45:17,298 - INFO - Container for django__django-11999 created: bc5021328c089b718de72dc73a1069f4b897ea6833161c84464a8bc6a832fd56
+2026-07-13 21:45:17,420 - INFO - Container for django__django-11999 started: bc5021328c089b718de72dc73a1069f4b897ea6833161c84464a8bc6a832fd56
+2026-07-13 21:45:17,423 - INFO - Intermediate patch for django__django-11999 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/django__django-11999/patch.diff, now applying to container...
+2026-07-13 21:45:17,558 - INFO - >>>>> Applied Patch:
+Checking patch django/db/models/fields/__init__.py...
+Checking patch tests/model_fields/models.py...
+Checking patch tests/model_fields/tests.py...
+Applied patch django/db/models/fields/__init__.py cleanly.
+Applied patch tests/model_fields/models.py cleanly.
+Applied patch tests/model_fields/tests.py cleanly.
+
+2026-07-13 21:45:18,237 - INFO - Git diff before:
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index ee45bb941e..6eccbace8d 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -763,8 +763,16 @@ class Field(RegisterLookupMixin):
+             if not getattr(cls, self.attname, None):
+                 setattr(cls, self.attname, self.descriptor_class(self))
+         if self.choices is not None:
+-            setattr(cls, 'get_%s_display' % self.name,
+-                    partialmethod(cls._get_FIELD_display, field=self))
++            # Don't override a get_FOO_display() method defined explicitly on
++            # this class, but don't check methods derived from inheritance,
++            # to allow overriding inherited choices. For more complex fields
++            # and related fields, the option isn't fully supported.
++            if 'get_%s_display' % self.name not in cls.__dict__:
++                setattr(
++                    cls,
++                    'get_%s_display' % self.name,
++                    partialmethod(cls._get_FIELD_display, field=self),
++                )
+ 
+     def get_filter_kwargs_for_object(self, obj):
+         """
+diff --git a/tests/model_fields/models.py b/tests/model_fields/models.py
+index 98b32d0c1e..9906fa2af3 100644
+--- a/tests/model_fields/models.py
++++ b/tests/model_fields/models.py
+@@ -68,6 +68,13 @@ class WhizIterEmpty(models.Model):
+     c = models.CharField(choices=iter(()), blank=True, max_length=1)
+ 
+ 
++class WhizCustomChoices(models.Model):
++    c = models.IntegerField(choices=Whiz.CHOICES, null=True)
++
++    def get_c_display(self):
++        return 'Custom Value'
++
++
+ class Choiceful(models.Model):
+     no_choices = models.IntegerField(null=True)
+     empty_choices = models.IntegerField(choices=(), null=True)
+diff --git a/tests/model_fields/tests.py b/tests/model_fields/tests.py
+index 0d6e930b06..ffaf17b25c 100644
+--- a/tests/model_fields/tests.py
++++ b/tests/model_fields/tests.py
+@@ -7,8 +7,8 @@ from django.test import SimpleTestCase, TestCase
+ from django.utils.functional import lazy
+ 
+ from .models import (
+-    Bar, Choiceful, Foo, RenamedField, VerboseNameField, Whiz, WhizDelayed,
+-    WhizIter, WhizIterEmpty,
++    Bar, Choiceful, Foo, RenamedField, VerboseNameField, Whiz, WhizCustomChoices,
++    WhizDelayed, WhizIter, WhizIterEmpty,
+ )
+ 
+ 
+@@ -168,6 +168,9 @@ class GetFieldDisplayTests(SimpleTestCase):
+         self.assertIsInstance(val, str)
+         self.assertEqual(val, 'translated')
+ 
++    def test_overriding_FIELD_display(self):
++        self.assertEqual(WhizCustomChoices(c=0).get_c_display(), 'Custom Value')
++
+     def test_iterator_choices(self):
+         """
+         get_choices() works with Iterators.
+2026-07-13 21:45:18,238 - INFO - Eval script for django__django-11999 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/django__django-11999/eval.sh; copying to container...
+2026-07-13 21:45:36,789 - INFO - Test runtime: 18.51 seconds
+2026-07-13 21:45:36,791 - INFO - Test output for django__django-11999 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/django__django-11999/test_output.txt
+2026-07-13 21:45:36,903 - INFO - Git diff after:
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index ee45bb941e..6eccbace8d 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -763,8 +763,16 @@ class Field(RegisterLookupMixin):
+             if not getattr(cls, self.attname, None):
+                 setattr(cls, self.attname, self.descriptor_class(self))
+         if self.choices is not None:
+-            setattr(cls, 'get_%s_display' % self.name,
+-                    partialmethod(cls._get_FIELD_display, field=self))
++            # Don't override a get_FOO_display() method defined explicitly on
++            # this class, but don't check methods derived from inheritance,
++            # to allow overriding inherited choices. For more complex fields
++            # and related fields, the option isn't fully supported.
++            if 'get_%s_display' % self.name not in cls.__dict__:
++                setattr(
++                    cls,
++                    'get_%s_display' % self.name,
++                    partialmethod(cls._get_FIELD_display, field=self),
++                )
+ 
+     def get_filter_kwargs_for_object(self, obj):
+         """
+diff --git a/tests/model_fields/models.py b/tests/model_fields/models.py
+index 98b32d0c1e..9906fa2af3 100644
+--- a/tests/model_fields/models.py
++++ b/tests/model_fields/models.py
+@@ -68,6 +68,13 @@ class WhizIterEmpty(models.Model):
+     c = models.CharField(choices=iter(()), blank=True, max_length=1)
+ 
+ 
++class WhizCustomChoices(models.Model):
++    c = models.IntegerField(choices=Whiz.CHOICES, null=True)
++
++    def get_c_display(self):
++        return 'Custom Value'
++
++
+ class Choiceful(models.Model):
+     no_choices = models.IntegerField(null=True)
+     empty_choices = models.IntegerField(choices=(), null=True)
+2026-07-13 21:45:36,904 - INFO - Git diff changed after running eval script
+2026-07-13 21:45:36,904 - INFO - Grading answer for django__django-11999...
+2026-07-13 21:45:36,904 - INFO - report: {'django__django-11999': {'patch_is_None': False, 'patch_exists': True, 'patch_successfully_applied': True, 'resolved': True, 'tests_status': {'FAIL_TO_PASS': {'success': ['test_overriding_FIELD_display (model_fields.tests.GetFieldDisplayTests)'], 'failure': []}, 'PASS_TO_PASS': {'success': ['test_blank_in_choices (model_fields.tests.GetChoicesTests)', 'test_blank_in_grouped_choices (model_fields.tests.GetChoicesTests)', 'test_empty_choices (model_fields.tests.GetChoicesTests)', 'test_lazy_strings_not_evaluated (model_fields.tests.GetChoicesTests)', 'test_check (model_fields.tests.ChoicesTests)', 'test_choices (model_fields.tests.ChoicesTests)', 'test_flatchoices (model_fields.tests.ChoicesTests)', 'test_formfield (model_fields.tests.ChoicesTests)', 'test_invalid_choice (model_fields.tests.ChoicesTests)', 'Can supply a custom choices form class to Field.formfield()', 'deconstruct() uses __qualname__ for nested class support.', 'Field instances can be pickled.', 'test_field_name (model_fields.tests.BasicFieldTests)', 'Fields are ordered based on their creation.', 'test_field_repr (model_fields.tests.BasicFieldTests)', '__repr__() uses __qualname__ for nested class support.', 'test_field_str (model_fields.tests.BasicFieldTests)', 'test_field_verbose_name (model_fields.tests.BasicFieldTests)', 'Field.formfield() sets disabled for fields with choices.', 'test_show_hidden_initial (model_fields.tests.BasicFieldTests)', 'test_choices_and_field_display (model_fields.tests.GetFieldDisplayTests)', 'test_empty_iterator_choices (model_fields.tests.GetFieldDisplayTests)', 'A translated display value is coerced to str.', 'test_iterator_choices (model_fields.tests.GetFieldDisplayTests)', 'test_get_choices (model_fields.tests.GetChoicesLimitChoicesToTests)', 'test_get_choices_reverse_related_field (model_fields.tests.GetChoicesLimitChoicesToTests)', 'test_get_choices (model_fields.tests.GetChoicesOrderingTests)', 'test_get_choices_default_ordering (model_fields.tests.GetChoicesOrderingTests)', 'test_get_choices_reverse_related_field (model_fields.tests.GetChoicesOrderingTests)', 'test_get_choices_reverse_related_field_default_ordering (model_fields.tests.GetChoicesOrderingTests)'], 'failure': []}, 'FAIL_TO_FAIL': {'success': [], 'failure': []}, 'PASS_TO_FAIL': {'success': [], 'failure': []}}}}
+Result for django__django-11999: resolved: True
+2026-07-13 21:45:36,905 - INFO - Attempting to stop container sweb.eval.django__django-11999.w3-sonnet-variance...
+2026-07-13 21:45:52,215 - INFO - Attempting to remove container sweb.eval.django__django-11999.w3-sonnet-variance...
+2026-07-13 21:45:52,247 - INFO - Container sweb.eval.django__django-11999.w3-sonnet-variance removed.
+2026-07-13 21:45:52,247 - INFO - Attempting to remove image swebench/sweb.eval.x86_64.django_1776_django-11999:latest...
+2026-07-13 21:45:52,787 - INFO - Image swebench/sweb.eval.x86_64.django_1776_django-11999:latest removed.

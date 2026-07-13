@@ -1,0 +1,5 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T133752_django__django-17051.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.django_1776_django-17051:latest container=swb-373c44b4ca3a workdir=/testbed preloaded=True]
+[COMPACTION at turn 29: ~25875 tok >= 25000 -> elided 15 blocks, ~10833 tok removed (target NOT met — un-elidable floor)]
+[hit max_turns=40 without end_turn | cost=$0.280740 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T133752_django__django-17051.jsonl]
+[patch: empty or extraction failed — final_git_diff meta line logged]

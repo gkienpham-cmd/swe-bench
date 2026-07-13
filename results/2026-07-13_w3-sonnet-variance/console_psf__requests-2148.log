@@ -1,0 +1,31 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T135047_psf__requests-2148.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.psf_1776_requests-2148:latest container=swb-6738c05a2a67 workdir=/testbed preloaded=True]
+I implemented a fix for this issue.
+
+## Root cause
+In `requests/models.py`, `Response.iter_content()` builds a `generate()` closure that reads from `self.raw.stream()` (urllib3), catching `IncompleteRead` and `DecodeError` and re-raising them as `requests.exceptions.ChunkedEncodingError` / `ContentDecodingError`. However, a low-level `socket.error` (e.g. ECONNRESET raised during body streaming) was not caught, so it propagated all the way up to user code as a raw `socket.error` instead of a `requests.exceptions.*` exception.
+
+## Fix
+In `requests/models.py`:
+- Import the standard `socket` module.
+- Import `ConnectionError` from `requests.exceptions`.
+- In the `generate()` inner function of `iter_content()`, catch `socket.error` alongside the existing `IncompleteRead`/`DecodeError` handlers and re-raise it wrapped as `requests.exceptions.ConnectionError`, consistent with how connection-time socket errors are already wrapped in `adapters.py`.
+
+```python
+try:
+    for chunk in self.raw.stream(chunk_size, decode_content=True):
+        yield chunk
+except IncompleteRead as e:
+    raise ChunkedEncodingError(e)
+except DecodeError as e:
+    raise ContentDecodingError(e)
+except socket.error as e:
+    raise ConnectionError(e)
+```
+
+Now a connection reset (or other OS-level socket error) encountered while streaming/reading response content (e.g. via `.content`, `.text`, `.iter_content()`, `.iter_lines()`) raises `requests.exceptions.ConnectionError` instead of a bare `socket.error`, matching user expectations when working with the `requests` API.
+
+I verified the change imports cleanly and ran the test suite; the failures present are pre-existing and due to the sandbox having no network access (DNS resolution failures for `httpbin.org`), reproducible identically before this change (verified via `git stash`), so they are unrelated to this fix.
+
+[end_turn after 19 turn(s) | tokens in=1179 out=3993 | cost=$0.106031 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T135047_psf__requests-2148.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T135047_psf__requests-2148.patch (1206 bytes)]

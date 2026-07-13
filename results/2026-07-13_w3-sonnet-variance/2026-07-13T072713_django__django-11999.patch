@@ -1,0 +1,66 @@
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index ee45bb941e..6eccbace8d 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -763,8 +763,16 @@ class Field(RegisterLookupMixin):
+             if not getattr(cls, self.attname, None):
+                 setattr(cls, self.attname, self.descriptor_class(self))
+         if self.choices is not None:
+-            setattr(cls, 'get_%s_display' % self.name,
+-                    partialmethod(cls._get_FIELD_display, field=self))
++            # Don't override a get_FOO_display() method defined explicitly on
++            # this class, but don't check methods derived from inheritance,
++            # to allow overriding inherited choices. For more complex fields
++            # and related fields, the option isn't fully supported.
++            if 'get_%s_display' % self.name not in cls.__dict__:
++                setattr(
++                    cls,
++                    'get_%s_display' % self.name,
++                    partialmethod(cls._get_FIELD_display, field=self),
++                )
+ 
+     def get_filter_kwargs_for_object(self, obj):
+         """
+diff --git a/tests/model_fields/models.py b/tests/model_fields/models.py
+index 98b32d0c1e..9906fa2af3 100644
+--- a/tests/model_fields/models.py
++++ b/tests/model_fields/models.py
+@@ -68,6 +68,13 @@ class WhizIterEmpty(models.Model):
+     c = models.CharField(choices=iter(()), blank=True, max_length=1)
+ 
+ 
++class WhizCustomChoices(models.Model):
++    c = models.IntegerField(choices=Whiz.CHOICES, null=True)
++
++    def get_c_display(self):
++        return 'Custom Value'
++
++
+ class Choiceful(models.Model):
+     no_choices = models.IntegerField(null=True)
+     empty_choices = models.IntegerField(choices=(), null=True)
+diff --git a/tests/model_fields/tests.py b/tests/model_fields/tests.py
+index 0d6e930b06..ffaf17b25c 100644
+--- a/tests/model_fields/tests.py
++++ b/tests/model_fields/tests.py
+@@ -7,8 +7,8 @@ from django.test import SimpleTestCase, TestCase
+ from django.utils.functional import lazy
+ 
+ from .models import (
+-    Bar, Choiceful, Foo, RenamedField, VerboseNameField, Whiz, WhizDelayed,
+-    WhizIter, WhizIterEmpty,
++    Bar, Choiceful, Foo, RenamedField, VerboseNameField, Whiz, WhizCustomChoices,
++    WhizDelayed, WhizIter, WhizIterEmpty,
+ )
+ 
+ 
+@@ -168,6 +168,9 @@ class GetFieldDisplayTests(SimpleTestCase):
+         self.assertIsInstance(val, str)
+         self.assertEqual(val, 'translated')
+ 
++    def test_overriding_FIELD_display(self):
++        self.assertEqual(WhizCustomChoices(c=0).get_c_display(), 'Custom Value')
++
+     def test_iterator_choices(self):
+         """
+         get_choices() works with Iterators.

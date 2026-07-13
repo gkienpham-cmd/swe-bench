@@ -1,0 +1,108 @@
+2026-07-13 21:44:15,526 - INFO - Creating container for astropy__astropy-6938...
+2026-07-13 21:44:16,130 - INFO - Container for astropy__astropy-6938 created: febf7dd31990e646a1aa247264a944b5d9e132c76cdbd3276350a2e5119f05c8
+2026-07-13 21:44:16,314 - INFO - Container for astropy__astropy-6938 started: febf7dd31990e646a1aa247264a944b5d9e132c76cdbd3276350a2e5119f05c8
+2026-07-13 21:44:16,314 - INFO - Intermediate patch for astropy__astropy-6938 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/astropy__astropy-6938/patch.diff, now applying to container...
+2026-07-13 21:44:16,482 - INFO - >>>>> Applied Patch:
+Checking patch astropy/io/fits/fitsrec.py...
+Checking patch astropy/io/fits/tests/test_checksum.py...
+Checking patch astropy/io/fits/tests/test_table.py...
+Applied patch astropy/io/fits/fitsrec.py cleanly.
+Applied patch astropy/io/fits/tests/test_checksum.py cleanly.
+Applied patch astropy/io/fits/tests/test_table.py cleanly.
+
+2026-07-13 21:44:17,131 - INFO - Git diff before:
+diff --git a/astropy/io/fits/fitsrec.py b/astropy/io/fits/fitsrec.py
+index 574b4073b1..bec100d12c 100644
+--- a/astropy/io/fits/fitsrec.py
++++ b/astropy/io/fits/fitsrec.py
+@@ -1261,7 +1261,8 @@ class FITS_rec(np.recarray):
+ 
+         # Replace exponent separator in floating point numbers
+         if 'D' in format:
+-            output_field.replace(encode_ascii('E'), encode_ascii('D'))
++            output_field[:] = output_field.replace(encode_ascii('E'),
++                                                     encode_ascii('D'))
+ 
+ 
+ def _get_recarray_field(array, key):
+diff --git a/astropy/io/fits/tests/test_checksum.py b/astropy/io/fits/tests/test_checksum.py
+index 3ee6eade81..14959407a2 100644
+--- a/astropy/io/fits/tests/test_checksum.py
++++ b/astropy/io/fits/tests/test_checksum.py
+@@ -205,9 +205,9 @@ class TestChecksumFunctions(FitsTestCase):
+                 # The checksum ends up being different on Windows, possibly due
+                 # to slight floating point differences
+                 assert 'CHECKSUM' in hdul[1].header
+-                assert hdul[1].header['CHECKSUM'] == '51IDA1G981GCA1G9'
++                assert hdul[1].header['CHECKSUM'] == '3rKFAoI94oICAoI9'
+                 assert 'DATASUM' in hdul[1].header
+-                assert hdul[1].header['DATASUM'] == '1948208413'
++                assert hdul[1].header['DATASUM'] == '1914653725'
+ 
+     def test_compressed_image_data(self):
+         with fits.open(self.data('comp.fits')) as h1:
+diff --git a/astropy/io/fits/tests/test_table.py b/astropy/io/fits/tests/test_table.py
+index 67fe21aa72..27da43fc39 100644
+--- a/astropy/io/fits/tests/test_table.py
++++ b/astropy/io/fits/tests/test_table.py
+@@ -9,6 +9,7 @@ import re
+ import pytest
+ import numpy as np
+ from numpy import char as chararray
++from numpy.testing import assert_array_almost_equal
+ 
+ try:
+     import objgraph
+@@ -382,6 +383,25 @@ class TestTableFunctions(FitsTestCase):
+         assert comparerecords(hdu.data, hdul[1].data)
+         hdul.close()
+ 
++    def test_ascii_table_pad(self):
++        # Regression test for https://github.com/astropy/astropy/issues/6985
++        c1 = fits.Column(name='a', format='D25.17',
++                          array=np.array([1.23456789e10]))
++        hdu = fits.TableHDU.from_columns([c1])
++        hdu.writeto(self.temp('toto.fits'), overwrite=True)
++
++        with open(self.temp('toto.fits'), 'rb') as f:
++            raw_data = f.read()
++
++        # Verify that the exponent separator was properly replaced with a
++        # 'D' rather than left as an 'E' as this is an ASCII table with a
++        # 'D' format column.
++        assert b'D+10' in raw_data
++        assert b'E+10' not in raw_data
++
++        with fits.open(self.temp('toto.fits')) as hdul:
++            assert_array_almost_equal(hdul[1].data['a'], [1.23456789e10])
++
+     def test_new_table_from_recarray(self):
+         bright = np.rec.array([(1, 'Serius', -1.45, 'A1V'),
+                                (2, 'Canopys', -0.73, 'F0Ib'),
+2026-07-13 21:44:17,131 - INFO - Eval script for astropy__astropy-6938 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/astropy__astropy-6938/eval.sh; copying to container...
+2026-07-13 21:44:30,578 - INFO - Test runtime: 13.40 seconds
+2026-07-13 21:44:30,580 - INFO - Test output for astropy__astropy-6938 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/astropy__astropy-6938/test_output.txt
+2026-07-13 21:44:30,746 - INFO - Git diff after:
+diff --git a/astropy/io/fits/fitsrec.py b/astropy/io/fits/fitsrec.py
+index 574b4073b1..bec100d12c 100644
+--- a/astropy/io/fits/fitsrec.py
++++ b/astropy/io/fits/fitsrec.py
+@@ -1261,7 +1261,8 @@ class FITS_rec(np.recarray):
+ 
+         # Replace exponent separator in floating point numbers
+         if 'D' in format:
+-            output_field.replace(encode_ascii('E'), encode_ascii('D'))
++            output_field[:] = output_field.replace(encode_ascii('E'),
++                                                     encode_ascii('D'))
+ 
+ 
+ def _get_recarray_field(array, key):
+2026-07-13 21:44:30,746 - INFO - Git diff changed after running eval script
+2026-07-13 21:44:30,746 - INFO - Grading answer for astropy__astropy-6938...
+2026-07-13 21:44:30,748 - INFO - report: {'astropy__astropy-6938': {'patch_is_None': False, 'patch_exists': True, 'patch_successfully_applied': True, 'resolved': True, 'tests_status': {'FAIL_TO_PASS': {'success': ['astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_ascii_table_data', 'astropy/io/fits/tests/test_table.py::TestTableFunctions::test_ascii_table'], 'failure': []}, 'PASS_TO_PASS': {'success': ['astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_sample_file', 'astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_image_create', 'astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_scaled_data', 'astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_scaled_data_auto_rescale', 'astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_uint16_data', 'astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_groups_hdu_data', 'astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_open_with_no_keywords', 'astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_writeto_convenience', 'astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_hdu_writeto', 'astropy/io/fits/tests/test_checksum.py::TestChecksumFunctions::test_datasum_only', 'astropy/io/fits/tests/test_table.py::test_regression_scalar_indexing'], 'failure': []}, 'FAIL_TO_FAIL': {'success': [], 'failure': []}, 'PASS_TO_FAIL': {'success': [], 'failure': []}}}}
+Result for astropy__astropy-6938: resolved: True
+2026-07-13 21:44:30,748 - INFO - Attempting to stop container sweb.eval.astropy__astropy-6938.w3-sonnet-variance...
+2026-07-13 21:44:45,981 - INFO - Attempting to remove container sweb.eval.astropy__astropy-6938.w3-sonnet-variance...
+2026-07-13 21:44:46,007 - INFO - Container sweb.eval.astropy__astropy-6938.w3-sonnet-variance removed.
+2026-07-13 21:44:46,007 - INFO - Attempting to remove image swebench/sweb.eval.x86_64.astropy_1776_astropy-6938:latest...
+2026-07-13 21:44:46,496 - INFO - Image swebench/sweb.eval.x86_64.astropy_1776_astropy-6938:latest removed.

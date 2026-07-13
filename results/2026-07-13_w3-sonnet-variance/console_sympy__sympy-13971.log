@@ -1,0 +1,14 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T142829_sympy__sympy-13971.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.sympy_1776_sympy-13971:latest container=swb-980ad74a0321 workdir=/testbed preloaded=True]
+The output is now `\left[0, 1, 4, 9, \ldots\right]`, which renders properly in both Jupyter and Markdown/MathJax.
+
+## Summary
+
+The issue was in `sympy/printing/latex.py`, in `_print_SeqFormula` (also used for `SeqPer`, `SeqAdd`, `SeqMul`). It was generating `\left\[` and `\right\]` — with the square brackets backslash-escaped. This escaping is unnecessary in LaTeX (square brackets are not special characters requiring escaping, unlike curly braces `{}`), and it caused rendering problems in some Markdown/MathJax contexts (e.g., Jupyter markdown cells), since `\]` can be misinterpreted as the closing delimiter for a `\[ ... \]` display-math block.
+
+**Fix:** Changed the LaTeX output from `\left\[...\right\]` to `\left[...\right]` (unescaped brackets), matching how `Interval`, `Matrix`, and other bracketed constructs are already printed elsewhere in the same file.
+
+I also updated the corresponding test expectations in `sympy/printing/tests/test_latex.py` (`test_latex_sequences`) to match the corrected (unescaped) output. Verified the fix produces `\left[0, 1, 4, 9, \ldots\right]` and that `test_latex_sequences` passes.
+
+[end_turn after 12 turn(s) | tokens in=315 out=2151 | cost=$0.057401 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T142829_sympy__sympy-13971.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T142829_sympy__sympy-13971.patch (2691 bytes)]

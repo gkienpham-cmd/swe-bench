@@ -1,0 +1,16 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T072027_django__django-10924.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.django_1776_django-10924:latest container=swb-1ea9cf61f03e workdir=/testbed preloaded=True]
+The implementation is complete. Summary:
+
+1. **`django/db/models/fields/__init__.py`** — `FilePathField.formfield()` now resolves `self.path` if it's callable before passing it to the form field, so `path` can be a function (e.g. wrapping `os.path.join(settings.LOCAL_FILE_DIR, 'example_dir')`) that is evaluated at runtime rather than at field-definition/migration-generation time.
+
+2. **`docs/ref/models/fields.txt`** — Documented that `path` may be a callable, with an example.
+
+3. **`tests/model_fields/test_filepathfield.py`** (new) — Added tests verifying both a plain string path and a callable path work correctly for `FilePathField` and its `formfield()`.
+
+Since `deconstruct()` already just stores whatever was passed to `path` in `kwargs['path']`, passing a callable (e.g. a module-level function) means migrations will now serialize a reference to that callable instead of the resolved, machine-specific path string — solving the reported problem where `makemigrations` baked in an absolute path specific to the machine it was run on.
+
+All related test suites (`field_deconstruction`, `model_forms`, `invalid_models_tests.test_ordinary_fields`, `forms_tests.field_tests.test_filepathfield`, `model_fields`) pass.
+
+[end_turn after 29 turn(s) | tokens in=386 out=5269 | cost=$0.141359 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T072027_django__django-10924.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T072027_django__django-10924.patch (2516 bytes)]

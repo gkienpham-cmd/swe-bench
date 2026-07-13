@@ -1,0 +1,4 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T133410_django__django-16910.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.django_1776_django-16910:latest container=swb-0d65ffedfe3e workdir=/testbed preloaded=True]
+[hit max_turns=40 without end_turn | cost=$0.260864 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T133410_django__django-16910.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T133410_django__django-16910.patch (959 bytes)]

@@ -1,0 +1,54 @@
+diff --git a/django/views/debug.py b/django/views/debug.py
+index cb3e8c7ec1..86da47ee20 100644
+--- a/django/views/debug.py
++++ b/django/views/debug.py
+@@ -5,10 +5,10 @@ import types
+ from pathlib import Path
+ 
+ from django.conf import settings
+-from django.http import HttpResponse, HttpResponseNotFound
++from django.http import Http404, HttpResponse, HttpResponseNotFound
+ from django.template import Context, Engine, TemplateDoesNotExist
+ from django.template.defaultfilters import pprint
+-from django.urls import Resolver404, resolve
++from django.urls import resolve
+ from django.utils import timezone
+ from django.utils.datastructures import MultiValueDict
+ from django.utils.encoding import force_str
+@@ -483,7 +483,7 @@ def technical_404_response(request, exception):
+     caller = ''
+     try:
+         resolver_match = resolve(request.path)
+-    except Resolver404:
++    except Http404:
+         pass
+     else:
+         obj = resolver_match.func
+diff --git a/tests/view_tests/tests/test_debug.py b/tests/view_tests/tests/test_debug.py
+index 46589c82ba..b7d6d30809 100644
+--- a/tests/view_tests/tests/test_debug.py
++++ b/tests/view_tests/tests/test_debug.py
+@@ -14,9 +14,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
+ from django.db import DatabaseError, connection
+ from django.shortcuts import render
+ from django.template import TemplateDoesNotExist
++from django.http import Http404
+ from django.test import RequestFactory, SimpleTestCase, override_settings
+ from django.test.utils import LoggingCaptureMixin
+ from django.urls import path, reverse
++from django.urls.converters import IntConverter
+ from django.utils.functional import SimpleLazyObject
+ from django.utils.safestring import mark_safe
+ from django.views.debug import (
+@@ -135,6 +137,11 @@ class DebugViewTests(SimpleTestCase):
+         self.assertContains(response, "Raised by:", status_code=404)
+         self.assertContains(response, "view_tests.views.Http404View", status_code=404)
+ 
++    def test_technical_404_converter_raise_http404(self):
++        with mock.patch.object(IntConverter, 'to_python', side_effect=Http404()):
++            response = self.client.get('/path-post/1/')
++        self.assertContains(response, "Page not found", status_code=404)
++
+     def test_non_l10ned_numeric_ids(self):
+         """
+         Numeric IDs and fancy traceback context blocks line numbers shouldn't be localized.

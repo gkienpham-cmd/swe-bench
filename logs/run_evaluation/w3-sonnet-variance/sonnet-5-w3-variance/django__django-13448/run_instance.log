@@ -1,0 +1,101 @@
+2026-07-13 21:46:42,529 - INFO - Creating container for django__django-13448...
+2026-07-13 21:46:42,764 - INFO - Container for django__django-13448 created: eba6ff53ade3bddd9edcda10e3e4cfc18f8c1e35d97462104f95d97935cc857a
+2026-07-13 21:46:42,841 - INFO - Container for django__django-13448 started: eba6ff53ade3bddd9edcda10e3e4cfc18f8c1e35d97462104f95d97935cc857a
+2026-07-13 21:46:42,841 - INFO - Intermediate patch for django__django-13448 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/django__django-13448/patch.diff, now applying to container...
+2026-07-13 21:46:42,970 - INFO - >>>>> Applied Patch:
+Checking patch django/db/backends/base/creation.py...
+Checking patch tests/backends/base/test_creation.py...
+Applied patch django/db/backends/base/creation.py cleanly.
+Applied patch tests/backends/base/test_creation.py cleanly.
+
+2026-07-13 21:46:43,698 - INFO - Git diff before:
+diff --git a/django/db/backends/base/creation.py b/django/db/backends/base/creation.py
+index 503f7f56fd..e5370a705e 100644
+--- a/django/db/backends/base/creation.py
++++ b/django/db/backends/base/creation.py
+@@ -101,6 +101,11 @@ class BaseDatabaseCreation:
+         def get_objects():
+             from django.db.migrations.loader import MigrationLoader
+             loader = MigrationLoader(self.connection)
++            # If MIGRATE=False was used for the test database, migrations
++            # won't have created some, or all, of the tables for apps that
++            # have migrations, so exclude them to avoid a database error
++            # when their data is queried.
++            existing_tables = set(self.connection.introspection.table_names())
+             for app_config in apps.get_app_configs():
+                 if (
+                     app_config.models_module is not None and
+@@ -110,7 +115,8 @@ class BaseDatabaseCreation:
+                     for model in app_config.get_models():
+                         if (
+                             model._meta.can_migrate(self.connection) and
+-                            router.allow_migrate_model(self.connection.alias, model)
++                            router.allow_migrate_model(self.connection.alias, model) and
++                            model._meta.db_table in existing_tables
+                         ):
+                             queryset = model._default_manager.using(
+                                 self.connection.alias,
+diff --git a/tests/backends/base/test_creation.py b/tests/backends/base/test_creation.py
+index 01215a9a5b..5d0ba960ee 100644
+--- a/tests/backends/base/test_creation.py
++++ b/tests/backends/base/test_creation.py
+@@ -126,6 +126,20 @@ class TestDeserializeDbFromString(TransactionTestCase):
+         self.assertEqual(obj_1.obj, obj_2)
+         self.assertEqual(obj_2.obj, obj_1)
+ 
++    def test_serialize_db_to_string_ignores_missing_tables(self):
++        # serialize_db_to_string() skips apps whose tables don't exist in
++        # the database (e.g. when the MIGRATE test setting is False and
++        # migrations weren't applied), instead of raising a database error.
++        ObjectSelfReference.objects.create(key='X')
++        with mock.patch('django.db.migrations.loader.MigrationLoader') as loader:
++            loader_instance = loader.return_value
++            loader_instance.migrated_apps = {'backends'}
++            with mock.patch.object(
++                connection.introspection, 'table_names', return_value=[]
++            ):
++                data = connection.creation.serialize_db_to_string()
++        self.assertEqual(data, '[]')
++
+     def test_circular_reference_with_natural_key(self):
+         # serialize_db_to_string() and deserialize_db_from_string() handles
+         # circular references for models with natural keys.
+2026-07-13 21:46:43,698 - INFO - Eval script for django__django-13448 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/django__django-13448/eval.sh; copying to container...
+2026-07-13 21:47:00,416 - INFO - Test runtime: 16.67 seconds
+2026-07-13 21:47:00,417 - INFO - Test output for django__django-13448 written to logs/run_evaluation/w3-sonnet-variance/sonnet-5-w3-variance/django__django-13448/test_output.txt
+2026-07-13 21:47:00,545 - INFO - Git diff after:
+diff --git a/django/db/backends/base/creation.py b/django/db/backends/base/creation.py
+index 503f7f56fd..e5370a705e 100644
+--- a/django/db/backends/base/creation.py
++++ b/django/db/backends/base/creation.py
+@@ -101,6 +101,11 @@ class BaseDatabaseCreation:
+         def get_objects():
+             from django.db.migrations.loader import MigrationLoader
+             loader = MigrationLoader(self.connection)
++            # If MIGRATE=False was used for the test database, migrations
++            # won't have created some, or all, of the tables for apps that
++            # have migrations, so exclude them to avoid a database error
++            # when their data is queried.
++            existing_tables = set(self.connection.introspection.table_names())
+             for app_config in apps.get_app_configs():
+                 if (
+                     app_config.models_module is not None and
+@@ -110,7 +115,8 @@ class BaseDatabaseCreation:
+                     for model in app_config.get_models():
+                         if (
+                             model._meta.can_migrate(self.connection) and
+-                            router.allow_migrate_model(self.connection.alias, model)
++                            router.allow_migrate_model(self.connection.alias, model) and
++                            model._meta.db_table in existing_tables
+                         ):
+                             queryset = model._default_manager.using(
+                                 self.connection.alias,
+2026-07-13 21:47:00,545 - INFO - Git diff changed after running eval script
+2026-07-13 21:47:00,545 - INFO - Grading answer for django__django-13448...
+2026-07-13 21:47:00,546 - INFO - report: {'django__django-13448': {'patch_is_None': False, 'patch_exists': True, 'patch_successfully_applied': True, 'resolved': False, 'tests_status': {'FAIL_TO_PASS': {'success': [], 'failure': ['test_migrate_test_setting_false (backends.base.test_creation.TestDbCreationTests)']}, 'PASS_TO_PASS': {'success': ['test_custom_test_name (backends.base.test_creation.TestDbSignatureTests)', 'test_custom_test_name_with_test_prefix (backends.base.test_creation.TestDbSignatureTests)', 'test_default_name (backends.base.test_creation.TestDbSignatureTests)', 'test_migrate_test_setting_true (backends.base.test_creation.TestDbCreationTests)', 'test_circular_reference (backends.base.test_creation.TestDeserializeDbFromString)', 'test_circular_reference_with_natural_key (backends.base.test_creation.TestDeserializeDbFromString)', 'test_self_reference (backends.base.test_creation.TestDeserializeDbFromString)'], 'failure': []}, 'FAIL_TO_FAIL': {'success': [], 'failure': []}, 'PASS_TO_FAIL': {'success': [], 'failure': []}}}}
+Result for django__django-13448: resolved: False
+2026-07-13 21:47:00,546 - INFO - Attempting to stop container sweb.eval.django__django-13448.w3-sonnet-variance...
+2026-07-13 21:47:15,771 - INFO - Attempting to remove container sweb.eval.django__django-13448.w3-sonnet-variance...
+2026-07-13 21:47:15,843 - INFO - Container sweb.eval.django__django-13448.w3-sonnet-variance removed.
+2026-07-13 21:47:15,843 - INFO - Attempting to remove image swebench/sweb.eval.x86_64.django_1776_django-13448:latest...
+2026-07-13 21:47:16,761 - INFO - Image swebench/sweb.eval.x86_64.django_1776_django-13448:latest removed.

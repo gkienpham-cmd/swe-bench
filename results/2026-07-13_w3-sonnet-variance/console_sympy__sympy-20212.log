@@ -1,0 +1,32 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T143529_sympy__sympy-20212.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.sympy_1776_sympy-20212:latest container=swb-b5f6e33d25b6 workdir=/testbed preloaded=True]
+All limits tests pass too (`OK`, all failures are expected/pre-existing).
+
+## Summary
+
+The bug was in `Zero._eval_power` in `sympy/core/numbers.py`. It checked `expt.is_positive` / `expt.is_negative`, but these assumptions are `False`/`None` for infinite quantities like `-oo` (since `is_positive`/`is_negative` are defined to mean *finite* and positive/negative). `-oo` satisfies `is_extended_negative` instead.
+
+Because `(-oo).is_negative` is `False`, the `if expt.is_negative: return S.ComplexInfinity` branch was never triggered for `expt = -oo`, so evaluation fell through to the `coeff, terms = expt.as_coeff_Mul()` logic, which incorrectly returned `0`.
+
+Fix: use the extended-real assumptions (`is_extended_positive` / `is_extended_negative`), which correctly account for infinities:
+
+```python
+def _eval_power(self, expt):
+    if expt.is_extended_positive:
+        return self
+    if expt.is_extended_negative:
+        return S.ComplexInfinity
+    if expt.is_extended_real is False:
+        return S.NaN
+    ...
+```
+
+After the fix:
+- `0**-oo` → `zoo` (matches documentation)
+- `0**oo` → `0` (unchanged, correct)
+- `0**2`, `0**-2`, `0**0`, etc. all still behave correctly.
+
+Ran the full `sympy/core` test suite plus `sympy/series/tests/test_limits.py` — all pass (only pre-existing expected failures/skips present, no new failures).
+
+[end_turn after 26 turn(s) | tokens in=304 out=3626 | cost=$0.095149 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T143529_sympy__sympy-20212.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T143529_sympy__sympy-20212.patch (518 bytes)]

@@ -1,0 +1,4 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T134627_matplotlib__matplotlib-23476.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-23476:latest container=swb-2458887510a5 workdir=/testbed preloaded=True]
+[hit max_turns=40 without end_turn | cost=$0.236014 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T134627_matplotlib__matplotlib-23476.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T134627_matplotlib__matplotlib-23476.patch (638 bytes)]

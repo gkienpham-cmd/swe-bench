@@ -1,0 +1,23 @@
+[trajectory: results/2026-07-13_w3-sonnet-variance/2026-07-13T140735_pytest-dev__pytest-6116.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-6116:latest container=swb-320fc6213357 workdir=/testbed preloaded=True]
+All tests pass. Summary of changes made:
+
+1. **`src/_pytest/main.py`**: Added `--co` as a synonym for `--collect-only` (alongside the existing `--collectonly` alias):
+```python
+group.addoption(
+    "--collectonly",
+    "--collect-only",
+    "--co",
+    action="store_true",
+    help="only collect tests, don't execute them.",
+),
+```
+
+2. **`changelog/6116.improvement.rst`**: Added a changelog entry documenting the new `--co` shortcut.
+
+Rationale: since all single ASCII letters (`-x`, `-c`, `-h`, `-p`, `-o`, `-v`, `-q`, `-r`, `-l`, `-s`, `-k`, `-m`, `-W`) are already claimed by other core options, a true single-character flag isn't available without breaking existing behavior. The pragmatic and minimal-conflict solution — which mirrors what was actually implemented upstream in real pytest (issue #5845 / PR #6116) — is to add the short, easy-to-type `--co` alias for `--collect-only`, giving users the quick shortcut they want without colliding with any existing option.
+
+I verified the change works (`pytest --co` now behaves identically to `pytest --collect-only`) and the existing test suite (`testing/test_collection.py`, `testing/test_terminal.py`) still passes.
+
+[end_turn after 17 turn(s) | tokens in=395 out=2732 | cost=$0.075620 | reward-hack flags=0 | trajectory=results/2026-07-13_w3-sonnet-variance/2026-07-13T140735_pytest-dev__pytest-6116.jsonl]
+[patch: results/2026-07-13_w3-sonnet-variance/2026-07-13T140735_pytest-dev__pytest-6116.patch (618 bytes)]
