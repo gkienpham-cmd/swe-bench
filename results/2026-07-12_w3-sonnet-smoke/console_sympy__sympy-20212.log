@@ -1,0 +1,36 @@
+[trajectory: results/2026-07-12_w3-sonnet-smoke/2026-07-12T200806_sympy__sympy-20212.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.sympy_1776_sympy-20212:latest container=swb-bd4874b233cf workdir=/testbed preloaded=True]
+The fix works correctly and doesn't break existing tests.
+
+## Summary
+
+The bug was in `Zero._eval_power` in `sympy/core/numbers.py`. It checked `expt.is_negative` to decide whether `0**expt` should return `zoo` (ComplexInfinity), but `-oo` (and `oo`) only have `is_extended_negative = True`, not `is_negative = True` (since infinities aren't real numbers, only *extended real*). As a result, `S.Zero**(-oo)` fell through to the fallback logic and incorrectly returned `0`.
+
+The fix adds checks using the extended real assumptions (`is_extended_nonnegative`/`is_extended_nonpositive`), which correctly cover the infinite cases as well as ordinary positive/negative numbers:
+
+```python
+def _eval_power(self, expt):
+    if expt.is_positive:
+        return self
+    if expt.is_negative:
+        return S.ComplexInfinity
+    if expt.is_extended_nonnegative:
+        return self
+    if expt.is_extended_nonpositive:
+        return S.ComplexInfinity
+    if expt.is_extended_real is False:
+        return S.NaN
+    ...
+```
+
+Now:
+- `0**-oo` → `zoo` (matches documentation)
+- `0**oo` → `0` (unchanged, correct)
+- `0**0` → `1` (unchanged)
+- `0**I` → `nan` (unchanged)
+- Symbolic positive/negative exponents behave as before.
+
+All existing tests in `sympy/core` (numbers, power, arithmetic, expr, evalf, etc.) and `sympy/functions/elementary/tests/test_exponential.py` still pass.
+
+[end_turn after 27 turn(s) | tokens in=306 out=4098 | cost=$0.115518 | reward-hack flags=0 | trajectory=results/2026-07-12_w3-sonnet-smoke/2026-07-12T200806_sympy__sympy-20212.jsonl]
+[patch: results/2026-07-12_w3-sonnet-smoke/2026-07-12T200806_sympy__sympy-20212.patch (572 bytes)]

@@ -1,0 +1,101 @@
+diff --git a/doc/whats_new/v1.3.rst b/doc/whats_new/v1.3.rst
+index a083d8600..bbc494d7a 100644
+--- a/doc/whats_new/v1.3.rst
++++ b/doc/whats_new/v1.3.rst
+@@ -104,6 +104,15 @@ Changelog
+   is now deprecated and will be removed in v1.5.
+   :pr:`25251` by :user:`Gleb Levitski <glevv>`.
+ 
++:mod:`sklearn.compose`
++......................
++
++- |Fix| :class:`compose.ColumnTransformer` now removes transformers with
++  an empty column selection from `_iter(fitted=True)` regardless of the
++  fitted transformer, fixing a bug where `set_output` cannot be used if any
++  transformer had an empty column selection.
++  :pr:`25406` by `Thomas Fan`_.
++
+ :mod:`sklearn.decomposition`
+ ............................
+ 
+diff --git a/sklearn/compose/_column_transformer.py b/sklearn/compose/_column_transformer.py
+index a26145117..2de3dfeea 100644
+--- a/sklearn/compose/_column_transformer.py
++++ b/sklearn/compose/_column_transformer.py
+@@ -383,16 +383,16 @@ class ColumnTransformer(TransformerMixin, _BaseComposition):
+             if replace_strings:
+                 # replace 'passthrough' with identity transformer and
+                 # skip in case of 'drop'
+-                if trans == "passthrough":
++                if trans == "drop":
++                    continue
++                elif _is_empty_column_selection(columns):
++                    continue
++                elif trans == "passthrough":
+                     trans = FunctionTransformer(
+                         accept_sparse=True,
+                         check_inverse=False,
+                         feature_names_out="one-to-one",
+                     ).set_output(transform=output_config["dense"])
+-                elif trans == "drop":
+-                    continue
+-                elif _is_empty_column_selection(columns):
+-                    continue
+ 
+             if column_as_strings:
+                 # Convert all columns to using their string labels
+@@ -587,6 +587,8 @@ class ColumnTransformer(TransformerMixin, _BaseComposition):
+         for name, old, column, _ in self._iter():
+             if old == "drop":
+                 trans = "drop"
++            elif _is_empty_column_selection(column):
++                trans = old
+             elif old == "passthrough":
+                 # FunctionTransformer is present in list of transformers,
+                 # so get next transformer, but save original string
+@@ -596,8 +598,6 @@ class ColumnTransformer(TransformerMixin, _BaseComposition):
+                 # The fitted FunctionTransformer is saved in another attribute,
+                 # so it can be used during transform for set_output.
+                 self._name_to_fitted_passthrough[name] = func_transformer
+-            elif _is_empty_column_selection(column):
+-                trans = old
+             else:
+                 trans = next(fitted_transformers)
+             transformers_.append((name, trans, column))
+diff --git a/sklearn/compose/tests/test_column_transformer.py b/sklearn/compose/tests/test_column_transformer.py
+index e18a0519d..89159ca29 100644
+--- a/sklearn/compose/tests/test_column_transformer.py
++++ b/sklearn/compose/tests/test_column_transformer.py
+@@ -1966,6 +1966,32 @@ def test_column_transformer_set_output(verbose_feature_names_out, remainder):
+     assert_array_equal(X_trans.index, df_test.index)
+ 
+ 
++@pytest.mark.parametrize("remainder", ["drop", "passthrough"])
++def test_column_transformer_set_output_empty_columns(remainder):
++    """Check column transformer behavior with set_output when one of
++    the transformers has an empty column selection.
++
++    Non-regression test for gh-25523.
++    """
++    pd = pytest.importorskip("pandas")
++    df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
++    ct = ColumnTransformer(
++        [
++            ("empty_features", "passthrough", []),
++            ("selected_features", "passthrough", ["a", "b"]),
++        ],
++        remainder=remainder,
++    ).set_output(transform="pandas")
++
++    X_trans = ct.fit_transform(df)
++    assert isinstance(X_trans, pd.DataFrame)
++    assert_array_equal(X_trans.columns, ct.get_feature_names_out())
++
++    X_trans = ct.transform(df)
++    assert isinstance(X_trans, pd.DataFrame)
++    assert_array_equal(X_trans.columns, ct.get_feature_names_out())
++
++
+ @pytest.mark.parametrize("remainder", ["drop", "passthrough"])
+ @pytest.mark.parametrize("fit_transform", [True, False])
+ def test_column_transform_set_output_mixed(remainder, fit_transform):

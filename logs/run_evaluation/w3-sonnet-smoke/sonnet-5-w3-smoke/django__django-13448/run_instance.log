@@ -1,0 +1,221 @@
+2026-07-13 03:37:16,857 - INFO - Creating container for django__django-13448...
+2026-07-13 03:37:17,154 - INFO - Container for django__django-13448 created: 0edcc1562e55142fb7b9460d31533add234323e87f8eeb0f704ebceb07e0d26f
+2026-07-13 03:37:17,218 - INFO - Container for django__django-13448 started: 0edcc1562e55142fb7b9460d31533add234323e87f8eeb0f704ebceb07e0d26f
+2026-07-13 03:37:17,219 - INFO - Intermediate patch for django__django-13448 written to logs/run_evaluation/w3-sonnet-smoke/sonnet-5-w3-smoke/django__django-13448/patch.diff, now applying to container...
+2026-07-13 03:37:17,376 - INFO - >>>>> Applied Patch:
+Checking patch django/db/backends/base/creation.py...
+Checking patch docs/ref/settings.txt...
+Checking patch docs/releases/3.1.2.txt...
+Checking patch tests/backends/base/app_unmigrated/__init__.py...
+Checking patch tests/backends/base/app_unmigrated/migrations/0001_initial.py...
+Checking patch tests/backends/base/app_unmigrated/migrations/__init__.py...
+Checking patch tests/backends/base/app_unmigrated/models.py...
+Checking patch tests/backends/base/test_creation.py...
+Applied patch django/db/backends/base/creation.py cleanly.
+Applied patch docs/ref/settings.txt cleanly.
+Applied patch docs/releases/3.1.2.txt cleanly.
+Applied patch tests/backends/base/app_unmigrated/__init__.py cleanly.
+Applied patch tests/backends/base/app_unmigrated/migrations/0001_initial.py cleanly.
+Applied patch tests/backends/base/app_unmigrated/migrations/__init__.py cleanly.
+Applied patch tests/backends/base/app_unmigrated/models.py cleanly.
+Applied patch tests/backends/base/test_creation.py cleanly.
+
+2026-07-13 03:37:18,005 - INFO - Git diff before:
+diff --git a/django/db/backends/base/creation.py b/django/db/backends/base/creation.py
+index 503f7f56fd..48a4a6994e 100644
+--- a/django/db/backends/base/creation.py
++++ b/django/db/backends/base/creation.py
+@@ -58,7 +58,14 @@ class BaseDatabaseCreation:
+         settings.DATABASES[self.connection.alias]["NAME"] = test_database_name
+         self.connection.settings_dict["NAME"] = test_database_name
+ 
+-        if self.connection.settings_dict['TEST']['MIGRATE']:
++        try:
++            if self.connection.settings_dict['TEST']['MIGRATE'] is False:
++                # Disable migrations for all apps.
++                old_migration_modules = settings.MIGRATION_MODULES
++                settings.MIGRATION_MODULES = {
++                    app.label: None
++                    for app in apps.get_app_configs()
++                }
+             # We report migrate messages at one level lower than that
+             # requested. This ensures we don't get flooded with messages during
+             # testing (unless you really ask to be flooded).
+@@ -69,6 +76,9 @@ class BaseDatabaseCreation:
+                 database=self.connection.alias,
+                 run_syncdb=True,
+             )
++        finally:
++            if self.connection.settings_dict['TEST']['MIGRATE'] is False:
++                settings.MIGRATION_MODULES = old_migration_modules
+ 
+         # We then serialize the current state of the database into a string
+         # and store it on the connection. This slightly horrific process is so people
+diff --git a/docs/ref/settings.txt b/docs/ref/settings.txt
+index 506267a028..429df374ad 100644
+--- a/docs/ref/settings.txt
++++ b/docs/ref/settings.txt
+@@ -792,6 +792,8 @@ on :ref:`controlling the creation order of test databases
+ Default: ``True``
+ 
+ When set to ``False``, migrations won't run when creating the test database.
++This is similar to setting ``None`` as a value in :setting:`MIGRATION_MODULES`,
++but for all apps.
+ 
+ .. setting:: TEST_MIRROR
+ 
+diff --git a/docs/releases/3.1.2.txt b/docs/releases/3.1.2.txt
+index fa820c78ee..90ce6af97f 100644
+--- a/docs/releases/3.1.2.txt
++++ b/docs/releases/3.1.2.txt
+@@ -19,3 +19,7 @@ Bugfixes
+ 
+ * Fixed a regression in Django 3.1 where a queryset would crash if it contained
+   an aggregation and a ``Q`` object annotation (:ticket:`32007`).
++
++* Fixed a bug in Django 3.1 where a test database was not synced during
++  creation when using the :setting:`MIGRATE <TEST_MIGRATE>` test database
++  setting (:ticket:`32012`).
+diff --git a/tests/backends/base/test_creation.py b/tests/backends/base/test_creation.py
+index 01215a9a5b..3d22cabd0f 100644
+--- a/tests/backends/base/test_creation.py
++++ b/tests/backends/base/test_creation.py
+@@ -6,6 +6,7 @@ from django.db.backends.base.creation import (
+     TEST_DATABASE_PREFIX, BaseDatabaseCreation,
+ )
+ from django.test import SimpleTestCase, TransactionTestCase
++from django.test.utils import override_settings
+ 
+ from ..models import (
+     CircularA, CircularB, Object, ObjectReference, ObjectSelfReference,
+@@ -49,31 +50,57 @@ class TestDbSignatureTests(SimpleTestCase):
+         self.assertEqual(signature[3], test_name)
+ 
+ 
++@override_settings(INSTALLED_APPS=['backends.base.app_unmigrated'])
+ @mock.patch.object(connection, 'ensure_connection')
+-@mock.patch('django.core.management.commands.migrate.Command.handle', return_value=None)
++@mock.patch.object(connection, 'prepare_database')
++@mock.patch('django.db.migrations.recorder.MigrationRecorder.has_table', return_value=False)
++@mock.patch('django.db.migrations.executor.MigrationExecutor.migrate')
++@mock.patch('django.core.management.commands.migrate.Command.sync_apps')
+ class TestDbCreationTests(SimpleTestCase):
+-    def test_migrate_test_setting_false(self, mocked_migrate, mocked_ensure_connection):
++    available_apps = ['backends.base.app_unmigrated']
++
++    def test_migrate_test_setting_false(self, mocked_sync_apps, mocked_migrate, *mocked_objects):
+         test_connection = get_connection_copy()
+         test_connection.settings_dict['TEST']['MIGRATE'] = False
+         creation = test_connection.creation_class(test_connection)
++        if connection.vendor == 'oracle':
++            # Don't close connection on Oracle.
++            creation.connection.close = mock.Mock()
+         old_database_name = test_connection.settings_dict['NAME']
+         try:
+             with mock.patch.object(creation, '_create_test_db'):
+                 creation.create_test_db(verbosity=0, autoclobber=True, serialize=False)
+-            mocked_migrate.assert_not_called()
++            # Migrations don't run.
++            mocked_migrate.assert_called()
++            args, kwargs = mocked_migrate.call_args
++            self.assertEqual(args, ([],))
++            self.assertEqual(kwargs['plan'], [])
++            # App is synced.
++            mocked_sync_apps.assert_called()
++            mocked_args, _ = mocked_sync_apps.call_args
++            self.assertEqual(mocked_args[1], {'app_unmigrated'})
+         finally:
+             with mock.patch.object(creation, '_destroy_test_db'):
+                 creation.destroy_test_db(old_database_name, verbosity=0)
+ 
+-    def test_migrate_test_setting_true(self, mocked_migrate, mocked_ensure_connection):
++    def test_migrate_test_setting_true(self, mocked_sync_apps, mocked_migrate, *mocked_objects):
+         test_connection = get_connection_copy()
+         test_connection.settings_dict['TEST']['MIGRATE'] = True
+         creation = test_connection.creation_class(test_connection)
++        if connection.vendor == 'oracle':
++            # Don't close connection on Oracle.
++            creation.connection.close = mock.Mock()
+         old_database_name = test_connection.settings_dict['NAME']
+         try:
+             with mock.patch.object(creation, '_create_test_db'):
+                 creation.create_test_db(verbosity=0, autoclobber=True, serialize=False)
+-            mocked_migrate.assert_called_once()
++            # Migrations run.
++            mocked_migrate.assert_called()
++            args, kwargs = mocked_migrate.call_args
++            self.assertEqual(args, ([('app_unmigrated', '0001_initial')],))
++            self.assertEqual(len(kwargs['plan']), 1)
++            # App is not synced.
++            mocked_sync_apps.assert_not_called()
+         finally:
+             with mock.patch.object(creation, '_destroy_test_db'):
+                 creation.destroy_test_db(old_database_name, verbosity=0)
+2026-07-13 03:37:18,005 - INFO - Eval script for django__django-13448 written to logs/run_evaluation/w3-sonnet-smoke/sonnet-5-w3-smoke/django__django-13448/eval.sh; copying to container...
+2026-07-13 03:37:33,695 - INFO - Test runtime: 15.64 seconds
+2026-07-13 03:37:33,696 - INFO - Test output for django__django-13448 written to logs/run_evaluation/w3-sonnet-smoke/sonnet-5-w3-smoke/django__django-13448/test_output.txt
+2026-07-13 03:37:33,802 - INFO - Git diff after:
+diff --git a/django/db/backends/base/creation.py b/django/db/backends/base/creation.py
+index 503f7f56fd..48a4a6994e 100644
+--- a/django/db/backends/base/creation.py
++++ b/django/db/backends/base/creation.py
+@@ -58,7 +58,14 @@ class BaseDatabaseCreation:
+         settings.DATABASES[self.connection.alias]["NAME"] = test_database_name
+         self.connection.settings_dict["NAME"] = test_database_name
+ 
+-        if self.connection.settings_dict['TEST']['MIGRATE']:
++        try:
++            if self.connection.settings_dict['TEST']['MIGRATE'] is False:
++                # Disable migrations for all apps.
++                old_migration_modules = settings.MIGRATION_MODULES
++                settings.MIGRATION_MODULES = {
++                    app.label: None
++                    for app in apps.get_app_configs()
++                }
+             # We report migrate messages at one level lower than that
+             # requested. This ensures we don't get flooded with messages during
+             # testing (unless you really ask to be flooded).
+@@ -69,6 +76,9 @@ class BaseDatabaseCreation:
+                 database=self.connection.alias,
+                 run_syncdb=True,
+             )
++        finally:
++            if self.connection.settings_dict['TEST']['MIGRATE'] is False:
++                settings.MIGRATION_MODULES = old_migration_modules
+ 
+         # We then serialize the current state of the database into a string
+         # and store it on the connection. This slightly horrific process is so people
+diff --git a/docs/ref/settings.txt b/docs/ref/settings.txt
+index 506267a028..429df374ad 100644
+--- a/docs/ref/settings.txt
++++ b/docs/ref/settings.txt
+@@ -792,6 +792,8 @@ on :ref:`controlling the creation order of test databases
+ Default: ``True``
+ 
+ When set to ``False``, migrations won't run when creating the test database.
++This is similar to setting ``None`` as a value in :setting:`MIGRATION_MODULES`,
++but for all apps.
+ 
+ .. setting:: TEST_MIRROR
+ 
+diff --git a/docs/releases/3.1.2.txt b/docs/releases/3.1.2.txt
+index fa820c78ee..90ce6af97f 100644
+--- a/docs/releases/3.1.2.txt
++++ b/docs/releases/3.1.2.txt
+@@ -19,3 +19,7 @@ Bugfixes
+ 
+ * Fixed a regression in Django 3.1 where a queryset would crash if it contained
+   an aggregation and a ``Q`` object annotation (:ticket:`32007`).
++
++* Fixed a bug in Django 3.1 where a test database was not synced during
++  creation when using the :setting:`MIGRATE <TEST_MIGRATE>` test database
++  setting (:ticket:`32012`).
+2026-07-13 03:37:33,802 - INFO - Git diff changed after running eval script
+2026-07-13 03:37:33,802 - INFO - Grading answer for django__django-13448...
+2026-07-13 03:37:33,803 - INFO - report: {'django__django-13448': {'patch_is_None': False, 'patch_exists': True, 'patch_successfully_applied': True, 'resolved': False, 'tests_status': {'FAIL_TO_PASS': {'success': [], 'failure': ['test_migrate_test_setting_false (backends.base.test_creation.TestDbCreationTests)']}, 'PASS_TO_PASS': {'success': ['test_custom_test_name (backends.base.test_creation.TestDbSignatureTests)', 'test_custom_test_name_with_test_prefix (backends.base.test_creation.TestDbSignatureTests)', 'test_default_name (backends.base.test_creation.TestDbSignatureTests)', 'test_migrate_test_setting_true (backends.base.test_creation.TestDbCreationTests)', 'test_circular_reference (backends.base.test_creation.TestDeserializeDbFromString)', 'test_circular_reference_with_natural_key (backends.base.test_creation.TestDeserializeDbFromString)', 'test_self_reference (backends.base.test_creation.TestDeserializeDbFromString)'], 'failure': []}, 'FAIL_TO_FAIL': {'success': [], 'failure': []}, 'PASS_TO_FAIL': {'success': [], 'failure': []}}}}
+Result for django__django-13448: resolved: False
+2026-07-13 03:37:33,803 - INFO - Attempting to stop container sweb.eval.django__django-13448.w3-sonnet-smoke...
+2026-07-13 03:37:48,740 - INFO - Attempting to remove container sweb.eval.django__django-13448.w3-sonnet-smoke...
+2026-07-13 03:37:48,755 - INFO - Container sweb.eval.django__django-13448.w3-sonnet-smoke removed.
+2026-07-13 03:37:48,755 - INFO - Attempting to remove image swebench/sweb.eval.x86_64.django_1776_django-13448:latest...
+2026-07-13 03:37:49,079 - INFO - Image swebench/sweb.eval.x86_64.django_1776_django-13448:latest removed.

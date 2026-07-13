@@ -1,0 +1,18 @@
+[trajectory: results/2026-07-12_w3-sonnet-smoke/2026-07-12T173904_django__django-10924.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.django_1776_django-10924:latest container=swb-70aaf7019f5b workdir=/testbed preloaded=True]
+All good. Summary of the changes made:
+
+1. **`django/db/models/fields/__init__.py`** — In `FilePathField.formfield()`, resolve `self.path` by calling it if it's callable before passing to the form field's `path` kwarg. The `deconstruct()` method already stores the raw `path` value (callable or string) in kwargs, so migrations will serialize the callable reference itself instead of the resolved absolute path, fixing the described issue.
+
+2. **`docs/ref/models/fields.txt`** — Documented that `FilePathField.path` may be a callable, with an example showing how to use a function to compute the path dynamically at runtime (e.g., based on `settings`).
+
+3. **`docs/releases/3.0.txt`** — Added a release note under "Models" mentioning that `FilePathField` now accepts a callable for its `path` argument.
+
+4. **`tests/model_fields/test_filepathfield.py`** (new file) — Added tests verifying that:
+   - a plain string `path` is set on the field and passed to the generated form field, and
+   - a callable `path` is stored as-is on the model field (`field.path` remains the callable) but is resolved on the form field (`field.formfield().path` equals the callable's return value).
+
+All existing tests (`model_fields` and `migrations` suites) continue to pass, confirming the callable's raw reference is preserved through `deconstruct()`, which is exactly what avoids baking in a machine-specific absolute path into migration files.
+
+[end_turn after 22 turn(s) | tokens in=372 out=4067 | cost=$0.095112 | reward-hack flags=0 | trajectory=results/2026-07-12_w3-sonnet-smoke/2026-07-12T173904_django__django-10924.jsonl]
+[patch: results/2026-07-12_w3-sonnet-smoke/2026-07-12T173904_django__django-10924.patch (2820 bytes)]

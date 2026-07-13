@@ -1,0 +1,34 @@
+diff --git a/sympy/printing/latex.py b/sympy/printing/latex.py
+index a0eb97792e..a0fdf9f2d4 100644
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -864,6 +864,10 @@ def _print_Abs(self, expr, exp=None):
+             return tex
+     _print_Determinant = _print_Abs
+ 
++    def _print_Trace(self, expr):
++        mat = expr.arg
++        return r"\mathrm{tr}\left (%s \right )" % self._print(mat)
++
+     def _print_re(self, expr, exp=None):
+         tex = r"\Re{%s}" % self.parenthesize(expr.args[0], PRECEDENCE['Atom'])
+ 
+diff --git a/sympy/printing/tests/test_latex.py b/sympy/printing/tests/test_latex.py
+index 9f644f15ee..5b745bbb62 100644
+--- a/sympy/printing/tests/test_latex.py
++++ b/sympy/printing/tests/test_latex.py
+@@ -1741,6 +1741,14 @@ def test_MatrixSymbol_printing():
+     assert latex(-A*B - A*B*C - B) == r"-B - A B - A B C"
+ 
+ 
++def test_Matrix_Trace_printing():
++    from sympy import trace
++    n = Symbol('n')
++    A = MatrixSymbol("A", n, n)
++    assert latex(trace(A)) == r"\mathrm{tr}\left (A \right )"
++    assert latex(trace(A**2)) == r"\mathrm{tr}\left (A^{2} \right )"
++
++
+ def test_Quaternion_latex_printing():
+     q = Quaternion(x, y, z, t)
+     assert latex(q) == "x + y i + z j + t k"

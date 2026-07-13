@@ -1,0 +1,12 @@
+[trajectory: results/2026-07-12_w3-sonnet-smoke/2026-07-12T175011_django__django-11999.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.django_1776_django-11999:latest container=swb-8d6157b129f3 workdir=/testbed preloaded=True]
+## Summary
+
+The regression was introduced because `Field.contribute_to_class()` unconditionally set `get_<field>_display` on the model class with `setattr`, overwriting any custom `get_<field>_display` method that a user had defined directly in the model body. In Django ≤2.1 field contribution happened before/differently relative to attribute assignment, so a user-defined method wasn't clobbered, but as of 2.2 the metaclass (`ModelBase.__new__`) first installs regular attributes (like the user's `get_foo_bar_display` method) on the class, and then later calls `contribute_to_class()` for fields, which blindly overwrote that method.
+
+**Fix**: in `django/db/models/fields/__init__.py`, `Field.contribute_to_class()` now only installs the auto-generated `get_<field>_display` accessor if one is not already explicitly defined on the class (`'get_%s_display' % self.name not in cls.__dict__`). This preserves user overrides while still generating the display accessor normally when it hasn't been overridden, and still allows the mechanism to work correctly through inheritance (a subclass without an explicit override still gets the generated method, since the check is against `cls.__dict__`, not `hasattr`).
+
+I verified with a standalone reproduction script that overriding `get_foo_bar_display()` on a model now works as expected, and ran the relevant Django test suites (`model_fields`, `model_regress`, `admin_changelist`, `forms_tests.tests.tests`, `modeladmin`, `admin_utils`) — all pass except one pre-existing, unrelated `UnicodeEncodeError` failure caused by the test environment's locale settings (confirmed to fail identically before the fix as well).
+
+[end_turn after 24 turn(s) | tokens in=331 out=4411 | cost=$0.106742 | reward-hack flags=0 | trajectory=results/2026-07-12_w3-sonnet-smoke/2026-07-12T175011_django__django-11999.jsonl]
+[patch: results/2026-07-12_w3-sonnet-smoke/2026-07-12T175011_django__django-11999.patch (1157 bytes)]

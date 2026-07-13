@@ -1,0 +1,25 @@
+[trajectory: results/2026-07-12_w3-sonnet-smoke/2026-07-12T195959_sympy__sympy-13971.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.sympy_1776_sympy-13971:latest container=swb-68ce8a04003d workdir=/testbed preloaded=True]
+The fix works as expected — output is now `\left[0, 1, 4, 9, \ldots\right]` instead of `\left\[...\right\]`.
+
+## Summary
+
+The `_print_SeqFormula` method in `sympy/printing/latex.py` (shared by `SeqFormula`, `SeqPer`, `SeqAdd`, `SeqMul`) was using `\left\[` and `\right\]` to render sequences, unnecessarily backslash-escaping the square brackets. This is unlike standard LaTeX usage where `\left[`/`\right]` (unescaped brackets) is the correct form for auto-sized delimiters — the backslash-escaped `\[` sequence is actually LaTeX shorthand for starting a display math block, which is why it broke rendering in the markdown/Jupyter context described in the issue.
+
+**Fix:** Changed
+```python
+return (r"\left\["
+      + r", ".join(self._print(el) for el in printset)
+      + r"\right\]")
+```
+to
+```python
+return (r"\left["
+      + r", ".join(self._print(el) for el in printset)
+      + r"\right]")
+```
+
+Also updated the corresponding expected strings in `sympy/printing/tests/test_latex.py::test_latex_sequences` to match the corrected (unescaped) output. Verified the sequence printing test passes and that `sp.latex(sp.SeqFormula(n**2, (n,0,sp.oo)))` now correctly produces `\left[0, 1, 4, 9, \ldots\right]`.
+
+[end_turn after 11 turn(s) | tokens in=313 out=2165 | cost=$0.047498 | reward-hack flags=0 | trajectory=results/2026-07-12_w3-sonnet-smoke/2026-07-12T195959_sympy__sympy-13971.jsonl]
+[patch: results/2026-07-12_w3-sonnet-smoke/2026-07-12T195959_sympy__sympy-13971.patch (2691 bytes)]

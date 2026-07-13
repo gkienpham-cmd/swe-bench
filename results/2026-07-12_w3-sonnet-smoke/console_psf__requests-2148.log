@@ -1,0 +1,20 @@
+[trajectory: results/2026-07-12_w3-sonnet-smoke/2026-07-12T093739_psf__requests-2148.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.psf_1776_requests-2148:latest container=swb-32281ec33896 workdir=/testbed preloaded=True]
+I found the root cause: in `Response.iter_content()` (in `requests/models.py`), the generator only caught `IncompleteRead` and `DecodeError` from urllib3's `raw.stream()` call, but not a raw `socket.error` (e.g. `ECONNRESET`) that can bubble up from the underlying socket during body reads (as opposed to during the initial connect/headers phase, which `adapters.py` already wraps).
+
+Fix applied in `requests/models.py`:
+
+1. Added `import socket`.
+2. Imported `ConnectionError` from `requests.exceptions`.
+3. In the `generate()` inner function of `iter_content`, added a handler:
+```python
+except socket.error as e:
+    raise ConnectionError(e)
+```
+
+Now a mid-stream socket reset (or any other raw `socket.error`) raised while iterating/reading response content will be wrapped as `requests.exceptions.ConnectionError` instead of propagating as a raw `socket.error`, consistent with how connection-phase socket errors are already handled in `adapters.py`.
+
+I verified the existing test suite behavior is unaffected — the failures seen when running `test_requests.py` are pre-existing and due to lack of network/DNS access in this sandbox (confirmed identical failures occur on the unmodified code via `git stash`), not caused by this change.
+
+[end_turn after 13 turn(s) | tokens in=1167 out=3153 | cost=$0.088432 | reward-hack flags=0 | trajectory=results/2026-07-12_w3-sonnet-smoke/2026-07-12T093739_psf__requests-2148.jsonl]
+[patch: results/2026-07-12_w3-sonnet-smoke/2026-07-12T093739_psf__requests-2148.patch (1206 bytes)]

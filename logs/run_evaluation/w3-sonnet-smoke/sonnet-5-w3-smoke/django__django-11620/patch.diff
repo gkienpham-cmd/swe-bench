@@ -1,0 +1,52 @@
+diff --git a/django/views/debug.py b/django/views/debug.py
+index cb3e8c7ec1..86da47ee20 100644
+--- a/django/views/debug.py
++++ b/django/views/debug.py
+@@ -5,10 +5,10 @@ import types
+ from pathlib import Path
+ 
+ from django.conf import settings
+-from django.http import HttpResponse, HttpResponseNotFound
++from django.http import Http404, HttpResponse, HttpResponseNotFound
+ from django.template import Context, Engine, TemplateDoesNotExist
+ from django.template.defaultfilters import pprint
+-from django.urls import Resolver404, resolve
++from django.urls import resolve
+ from django.utils import timezone
+ from django.utils.datastructures import MultiValueDict
+ from django.utils.encoding import force_str
+@@ -483,7 +483,7 @@ def technical_404_response(request, exception):
+     caller = ''
+     try:
+         resolver_match = resolve(request.path)
+-    except Resolver404:
++    except Http404:
+         pass
+     else:
+         obj = resolver_match.func
+diff --git a/tests/urlpatterns/tests.py b/tests/urlpatterns/tests.py
+index 214739f678..aa9514c148 100644
+--- a/tests/urlpatterns/tests.py
++++ b/tests/urlpatterns/tests.py
+@@ -1,6 +1,7 @@
+ import uuid
+ 
+ from django.core.exceptions import ImproperlyConfigured
++from django.http import Http404
+ from django.test import SimpleTestCase
+ from django.test.utils import override_settings
+ from django.urls import Resolver404, path, resolve, reverse
+@@ -219,6 +220,13 @@ class ConversionExceptionTests(SimpleTestCase):
+         with self.assertRaisesMessage(TypeError, 'This type error propagates.'):
+             resolve('/dynamic/abc/')
+ 
++    def test_resolve_http404_error_propagates(self):
++        @DynamicConverter.register_to_python
++        def raises_http404_error(value):
++            raise Http404()
++        with self.assertRaises(Http404):
++            resolve('/dynamic/abc/')
++
+     def test_reverse_value_error_propagates(self):
+         @DynamicConverter.register_to_url
+         def raises_value_error(value):

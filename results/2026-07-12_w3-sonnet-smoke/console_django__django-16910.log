@@ -1,0 +1,5 @@
+[trajectory: results/2026-07-12_w3-sonnet-smoke/2026-07-12T181544_django__django-16910.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.django_1776_django-16910:latest container=swb-5896a1d8478b workdir=/testbed preloaded=True]
+[COMPACTION at turn 38: ~25770 tok >= 25000 -> elided 17 blocks, ~8286 tok removed (target NOT met — un-elidable floor)]
+[hit max_turns=40 without end_turn | cost=$0.276606 | reward-hack flags=0 | trajectory=results/2026-07-12_w3-sonnet-smoke/2026-07-12T181544_django__django-16910.jsonl]
+[patch: results/2026-07-12_w3-sonnet-smoke/2026-07-12T181544_django__django-16910.patch (987 bytes)]

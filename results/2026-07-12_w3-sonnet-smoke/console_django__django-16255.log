@@ -1,0 +1,6 @@
+[trajectory: results/2026-07-12_w3-sonnet-smoke/2026-07-12T181153_django__django-16255.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.django_1776_django-16255:latest container=swb-3cd3466bccaa workdir=/testbed preloaded=True]
+Fixed by catching `ValueError` in addition to `TypeError` in `Sitemap.get_latest_lastmod`.
+
+[end_turn after 5 turn(s) | tokens in=727 out=481 | cost=$0.015233 | reward-hack flags=0 | trajectory=results/2026-07-12_w3-sonnet-smoke/2026-07-12T181153_django__django-16255.jsonl]
+[patch: results/2026-07-12_w3-sonnet-smoke/2026-07-12T181153_django__django-16255.patch (524 bytes)]

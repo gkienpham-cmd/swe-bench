@@ -1,0 +1,25 @@
+[trajectory: results/2026-07-12_w3-sonnet-smoke/2026-07-12T201448_sympy__sympy-23262.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.sympy_1776_sympy-23262:latest container=swb-1859485c41fe workdir=/testbed preloaded=True]
+All tests pass. The fix is in `/testbed/sympy/utilities/lambdify.py`, in the `_recursive_to_string` helper function.
+
+## Summary
+
+The bug was in `sympy/utilities/lambdify.py`'s `_recursive_to_string` helper, which is used by the lambdify code generator to stringify plain Python containers (lists/tuples) passed as expressions. It builds the output as `left + ', '.join(...) + right` using fixed delimiters `"()"` for tuples, without ever adding the trailing comma needed for a Python one-element tuple. So `tuple([1])` was rendered as `(1)` — a plain int in parens — instead of `(1,)`.
+
+The fix adjusts the delimiters so that when a tuple has exactly one element, the closing delimiter includes the necessary trailing comma:
+
+```python
+elif isinstance(arg, tuple):
+    left, right = "(", ",)" if len(arg) == 1 else ")"
+```
+
+Verified:
+- `lambdify([], tuple([1]))` → `return (1,)`
+- `lambdify([], tuple([1, 2]))` → `return (1, 2)`
+- `lambdify([], tuple([]))` → `return ()`
+- `lambdify([], [1])` / `lambdify([], [])` unaffected (lists still print correctly)
+
+All existing tests in `sympy/utilities/tests/test_lambdify.py` pass.
+
+[end_turn after 16 turn(s) | tokens in=498 out=3039 | cost=$0.061825 | reward-hack flags=0 | trajectory=results/2026-07-12_w3-sonnet-smoke/2026-07-12T201448_sympy__sympy-23262.jsonl]
+[patch: results/2026-07-12_w3-sonnet-smoke/2026-07-12T201448_sympy__sympy-23262.patch (864 bytes)]

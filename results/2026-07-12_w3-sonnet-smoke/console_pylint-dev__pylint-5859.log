@@ -1,0 +1,4 @@
+[trajectory: results/2026-07-12_w3-sonnet-smoke/2026-07-12T191652_pylint-dev__pylint-5859.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-5859:latest container=swb-3ccf5571d956 workdir=/testbed preloaded=True]
+[hit max_turns=40 without end_turn | cost=$0.221325 | reward-hack flags=0 | trajectory=results/2026-07-12_w3-sonnet-smoke/2026-07-12T191652_pylint-dev__pylint-5859.jsonl]
+[patch: results/2026-07-12_w3-sonnet-smoke/2026-07-12T191652_pylint-dev__pylint-5859.patch (850 bytes)]

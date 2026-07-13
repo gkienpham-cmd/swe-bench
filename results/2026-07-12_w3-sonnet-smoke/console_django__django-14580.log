@@ -1,0 +1,30 @@
+[trajectory: results/2026-07-12_w3-sonnet-smoke/2026-07-12T180425_django__django-14580.jsonl]
+[sandbox: image=swebench/sweb.eval.x86_64.django_1776_django-14580:latest container=swb-34e407e5c672 workdir=/testbed preloaded=True]
+All 578 migration tests pass.
+
+## Summary
+
+The bug was in `django/db/migrations/serializer.py`, in `TypeSerializer.serialize()`. When serializing `models.Model` (e.g. when it appears as a base class in `CreateModel` operations), it returned the string `"models.Model"` but declared **no imports** for it:
+
+```python
+special_cases = [
+    (models.Model, "models.Model", []),
+    (type(None), 'type(None)', []),
+]
+```
+
+This relied on the migration writer separately detecting a usage of `"from django.db import models"` (added elsewhere, e.g. by field serializers) in order to merge it into the final `from django.db import migrations, models` import line. If nothing else in the migration needed the `models` import (as in the reported case, where the custom field's module is imported as `app.models` instead), the `models` name ended up unbound, causing `NameError: name 'models' is not defined`.
+
+The fix declares the required import explicitly for this special case:
+
+```python
+special_cases = [
+    (models.Model, "models.Model", ["from django.db import models"]),
+    (type(None), 'type(None)', []),
+]
+```
+
+This ensures the import bubbles up through `MigrationWriter`, which already merges `"from django.db import models"` into `"from django.db import migrations, models"` when present. Verified with the reproduction case from the report and the full migrations test suite (578 tests passing).
+
+[end_turn after 13 turn(s) | tokens in=701 out=2076 | cost=$0.050617 | reward-hack flags=0 | trajectory=results/2026-07-12_w3-sonnet-smoke/2026-07-12T180425_django__django-14580.jsonl]
+[patch: results/2026-07-12_w3-sonnet-smoke/2026-07-12T180425_django__django-14580.patch (599 bytes)]

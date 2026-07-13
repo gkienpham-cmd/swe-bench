@@ -1,0 +1,80 @@
+[1/30] astropy__astropy-6938: pulling swebench/sweb.eval.x86_64.astropy_1776_astropy-6938:latest
+[1/30] astropy__astropy-6938: testbed=3.6.13 base=3.11.5 compat=pass (10.1s)
+[2/30] django__django-10924: pulling swebench/sweb.eval.x86_64.django_1776_django-10924:latest
+[2/30] django__django-10924: testbed=3.6.13 base=3.11.5 compat=pass (29.7s)
+[3/30] django__django-11620: pulling swebench/sweb.eval.x86_64.django_1776_django-11620:latest
+[3/30] django__django-11620: testbed=3.6.13 base=3.11.5 compat=pass (26.9s)
+[4/30] django__django-11999: pulling swebench/sweb.eval.x86_64.django_1776_django-11999:latest
+[4/30] django__django-11999: testbed=3.6.13 base=3.11.5 compat=pass (23.5s)
+[5/30] django__django-12915: pulling swebench/sweb.eval.x86_64.django_1776_django-12915:latest
+[5/30] django__django-12915: testbed=3.6.13 base=3.11.5 compat=pass (30.6s)
+[6/30] django__django-13315: pulling swebench/sweb.eval.x86_64.django_1776_django-13315:latest
+[6/30] django__django-13315: testbed=3.6.13 base=3.11.5 compat=pass (23.5s)
+[7/30] django__django-13448: pulling swebench/sweb.eval.x86_64.django_1776_django-13448:latest
+[7/30] django__django-13448: testbed=3.6.13 base=3.11.5 compat=pass (26.1s)
+[8/30] django__django-14580: pulling swebench/sweb.eval.x86_64.django_1776_django-14580:latest
+[8/30] django__django-14580: testbed=3.8.20 base=3.11.5 compat=pass (29.2s)
+[9/30] django__django-14672: pulling swebench/sweb.eval.x86_64.django_1776_django-14672:latest
+[9/30] django__django-14672: testbed=3.8.20 base=3.11.5 compat=pass (27.8s)
+[10/30] django__django-16255: pulling swebench/sweb.eval.x86_64.django_1776_django-16255:latest
+[10/30] django__django-16255: testbed=3.9.20 base=3.11.5 compat=pass (25.8s)
+[11/30] django__django-16910: pulling swebench/sweb.eval.x86_64.django_1776_django-16910:latest
+[11/30] django__django-16910: testbed=3.11.10 base=3.11.5 compat=pass (33.2s)
+[12/30] django__django-17051: pulling swebench/sweb.eval.x86_64.django_1776_django-17051:latest
+[12/30] django__django-17051: testbed=3.11.10 base=3.11.5 compat=pass (32.0s)
+[13/30] matplotlib__matplotlib-22835: pulling swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-22835:latest
+[13/30] matplotlib__matplotlib-22835: PULL FAILED: failed to copy: httpReadSeeker: failed open: failed to do request: Get "https://registry-1.docker.io/v2/swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-22835/manifests/sha256:bcdc92a77f8798cbf46d94ade3da7cac81ffb714838eb39bbd553b5ea80375bb": EOF
+[14/30] matplotlib__matplotlib-23476: pulling swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-23476:latest
+[14/30] matplotlib__matplotlib-23476: testbed=3.11.11 base=3.11.5 compat=pass (472.4s)
+[15/30] psf__requests-2148: pulling swebench/sweb.eval.x86_64.psf_1776_requests-2148:latest
+[15/30] psf__requests-2148: testbed=3.9.20 base=3.11.5 compat=pass (72.8s)
+[16/30] pydata__xarray-5131: pulling swebench/sweb.eval.x86_64.pydata_1776_xarray-5131:latest
+[16/30] pydata__xarray-5131: testbed=3.10.15 base=3.11.5 compat=pass (245.1s)
+[17/30] pylint-dev__pylint-5859: pulling swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-5859:latest
+[17/30] pylint-dev__pylint-5859: testbed=3.9.20 base=3.11.5 compat=pass (51.7s)
+[18/30] pytest-dev__pytest-5221: pulling swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-5221:latest
+[18/30] pytest-dev__pytest-5221: testbed=3.9.20 base=3.11.5 compat=pass (60.5s)
+[19/30] pytest-dev__pytest-6116: pulling swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-6116:latest
+[1/30] astropy__astropy-6938: already probed, skipping
+[2/30] django__django-10924: already probed, skipping
+[3/30] django__django-11620: already probed, skipping
+[4/30] django__django-11999: already probed, skipping
+[5/30] django__django-12915: already probed, skipping
+[6/30] django__django-13315: already probed, skipping
+[7/30] django__django-13448: already probed, skipping
+[8/30] django__django-14580: already probed, skipping
+[9/30] django__django-14672: already probed, skipping
+[10/30] django__django-16255: already probed, skipping
+[11/30] django__django-16910: already probed, skipping
+[12/30] django__django-17051: already probed, skipping
+[13/30] matplotlib__matplotlib-22835: pulling swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-22835:latest
+[13/30] matplotlib__matplotlib-22835: testbed=3.11.11 base=3.11.5 compat=pass (186.6s)
+[14/30] matplotlib__matplotlib-23476: already probed, skipping
+[15/30] psf__requests-2148: already probed, skipping
+[16/30] pydata__xarray-5131: already probed, skipping
+[17/30] pylint-dev__pylint-5859: already probed, skipping
+[18/30] pytest-dev__pytest-5221: already probed, skipping
+[19/30] pytest-dev__pytest-6116: testbed=3.9.20 base=3.11.5 compat=pass (1.7s)
+[20/30] scikit-learn__scikit-learn-10949: pulling swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10949:latest
+[20/30] scikit-learn__scikit-learn-10949: testbed=3.6.13 base=3.11.5 compat=pass (38.3s)
+[21/30] scikit-learn__scikit-learn-25570: pulling swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-25570:latest
+[21/30] scikit-learn__scikit-learn-25570: testbed=3.9.20 base=3.11.5 compat=pass (51.4s)
+[22/30] sphinx-doc__sphinx-8273: pulling swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8273:latest
+[22/30] sphinx-doc__sphinx-8273: testbed=3.9.20 base=3.11.5 compat=pass (29.6s)
+[23/30] sphinx-doc__sphinx-8713: pulling swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8713:latest
+[23/30] sphinx-doc__sphinx-8713: testbed=3.9.20 base=3.11.5 compat=pass (22.9s)
+[24/30] sympy__sympy-11400: pulling swebench/sweb.eval.x86_64.sympy_1776_sympy-11400:latest
+[24/30] sympy__sympy-11400: testbed=3.9.20 base=3.11.5 compat=pass (23.9s)
+[25/30] sympy__sympy-12481: pulling swebench/sweb.eval.x86_64.sympy_1776_sympy-12481:latest
+[25/30] sympy__sympy-12481: testbed=3.9.20 base=3.11.5 compat=pass (36.6s)
+[26/30] sympy__sympy-13971: pulling swebench/sweb.eval.x86_64.sympy_1776_sympy-13971:latest
+[26/30] sympy__sympy-13971: testbed=3.9.20 base=3.11.5 compat=pass (42.5s)
+[27/30] sympy__sympy-15308: pulling swebench/sweb.eval.x86_64.sympy_1776_sympy-15308:latest
+[27/30] sympy__sympy-15308: testbed=3.9.20 base=3.11.5 compat=pass (27.4s)
+[28/30] sympy__sympy-17630: pulling swebench/sweb.eval.x86_64.sympy_1776_sympy-17630:latest
+[28/30] sympy__sympy-17630: testbed=3.9.20 base=3.11.5 compat=pass (21.9s)
+[29/30] sympy__sympy-20212: pulling swebench/sweb.eval.x86_64.sympy_1776_sympy-20212:latest
+[29/30] sympy__sympy-20212: testbed=3.9.20 base=3.11.5 compat=pass (25.0s)
+[30/30] sympy__sympy-23262: pulling swebench/sweb.eval.x86_64.sympy_1776_sympy-23262:latest
+[30/30] sympy__sympy-23262: testbed=3.9.20 base=3.11.5 compat=pass (21.0s)
+done: 30/30 probed, 0 problems

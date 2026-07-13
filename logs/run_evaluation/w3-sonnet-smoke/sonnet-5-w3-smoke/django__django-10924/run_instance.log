@@ -1,0 +1,127 @@
+2026-07-13 03:21:27,082 - INFO - Creating container for django__django-10924...
+2026-07-13 03:21:27,626 - INFO - Container for django__django-10924 created: c7558631e893b3aae4ebaf04dac5b75a84ddaa5300f94e548af25ba2edc3aff0
+2026-07-13 03:21:27,719 - INFO - Container for django__django-10924 started: c7558631e893b3aae4ebaf04dac5b75a84ddaa5300f94e548af25ba2edc3aff0
+2026-07-13 03:21:27,719 - INFO - Intermediate patch for django__django-10924 written to logs/run_evaluation/w3-sonnet-smoke/sonnet-5-w3-smoke/django__django-10924/patch.diff, now applying to container...
+2026-07-13 03:21:27,861 - INFO - >>>>> Applied Patch:
+Checking patch django/db/models/fields/__init__.py...
+Checking patch docs/ref/models/fields.txt...
+Checking patch docs/releases/3.0.txt...
+Checking patch tests/model_fields/test_filepathfield.py...
+Applied patch django/db/models/fields/__init__.py cleanly.
+Applied patch docs/ref/models/fields.txt cleanly.
+Applied patch docs/releases/3.0.txt cleanly.
+Applied patch tests/model_fields/test_filepathfield.py cleanly.
+
+2026-07-13 03:21:28,527 - INFO - Git diff before:
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 0c64748ccd..4d7eb11151 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -1709,7 +1709,7 @@ class FilePathField(Field):
+ 
+     def formfield(self, **kwargs):
+         return super().formfield(**{
+-            'path': self.path,
++            'path': self.path() if callable(self.path) else self.path,
+             'match': self.match,
+             'recursive': self.recursive,
+             'form_class': forms.FilePathField,
+diff --git a/docs/ref/models/fields.txt b/docs/ref/models/fields.txt
+index e352e8b007..e4ef6c466d 100644
+--- a/docs/ref/models/fields.txt
++++ b/docs/ref/models/fields.txt
+@@ -868,6 +868,19 @@ directory on the filesystem. Has three special arguments, of which the first is
+     Required. The absolute filesystem path to a directory from which this
+     :class:`FilePathField` should get its choices. Example: ``"/home/images"``.
+ 
++    ``path`` may also be a callable, such as a function, to allow, for
++    example, dynamic setting of the path at runtime. Example::
++
++        import os
++        from django.conf import settings
++        from django.db import models
++
++        def images_path():
++            return os.path.join(settings.LOCAL_FILE_DIR, "images")
++
++        class MyModel(models.Model):
++            file = models.FilePathField(path=images_path)
++
+ .. attribute:: FilePathField.match
+ 
+     Optional. A regular expression, as a string, that :class:`FilePathField`
+diff --git a/docs/releases/3.0.txt b/docs/releases/3.0.txt
+index b78d4bd6ab..0bbba6928e 100644
+--- a/docs/releases/3.0.txt
++++ b/docs/releases/3.0.txt
+@@ -206,6 +206,9 @@ Models
+ 
+ * ``connection.queries`` now shows ``COPY … TO`` statements on PostgreSQL.
+ 
++* :class:`~django.db.models.FilePathField` now accepts a callable for its
++  ``path`` argument.
++
+ Requests and Responses
+ ~~~~~~~~~~~~~~~~~~~~~~
+2026-07-13 03:21:28,527 - INFO - Eval script for django__django-10924 written to logs/run_evaluation/w3-sonnet-smoke/sonnet-5-w3-smoke/django__django-10924/eval.sh; copying to container...
+2026-07-13 03:21:44,674 - INFO - Test runtime: 16.10 seconds
+2026-07-13 03:21:44,674 - INFO - Test output for django__django-10924 written to logs/run_evaluation/w3-sonnet-smoke/sonnet-5-w3-smoke/django__django-10924/test_output.txt
+2026-07-13 03:21:44,778 - INFO - Git diff after:
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 0c64748ccd..4d7eb11151 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -1709,7 +1709,7 @@ class FilePathField(Field):
+ 
+     def formfield(self, **kwargs):
+         return super().formfield(**{
+-            'path': self.path,
++            'path': self.path() if callable(self.path) else self.path,
+             'match': self.match,
+             'recursive': self.recursive,
+             'form_class': forms.FilePathField,
+diff --git a/docs/ref/models/fields.txt b/docs/ref/models/fields.txt
+index e352e8b007..e4ef6c466d 100644
+--- a/docs/ref/models/fields.txt
++++ b/docs/ref/models/fields.txt
+@@ -868,6 +868,19 @@ directory on the filesystem. Has three special arguments, of which the first is
+     Required. The absolute filesystem path to a directory from which this
+     :class:`FilePathField` should get its choices. Example: ``"/home/images"``.
+ 
++    ``path`` may also be a callable, such as a function, to allow, for
++    example, dynamic setting of the path at runtime. Example::
++
++        import os
++        from django.conf import settings
++        from django.db import models
++
++        def images_path():
++            return os.path.join(settings.LOCAL_FILE_DIR, "images")
++
++        class MyModel(models.Model):
++            file = models.FilePathField(path=images_path)
++
+ .. attribute:: FilePathField.match
+ 
+     Optional. A regular expression, as a string, that :class:`FilePathField`
+diff --git a/docs/releases/3.0.txt b/docs/releases/3.0.txt
+index b78d4bd6ab..0bbba6928e 100644
+--- a/docs/releases/3.0.txt
++++ b/docs/releases/3.0.txt
+@@ -206,6 +206,9 @@ Models
+ 
+ * ``connection.queries`` now shows ``COPY … TO`` statements on PostgreSQL.
+ 
++* :class:`~django.db.models.FilePathField` now accepts a callable for its
++  ``path`` argument.
++
+ Requests and Responses
+ ~~~~~~~~~~~~~~~~~~~~~~
+2026-07-13 03:21:44,778 - INFO - Grading answer for django__django-10924...
+2026-07-13 03:21:44,778 - INFO - report: {'django__django-10924': {'patch_is_None': False, 'patch_exists': True, 'patch_successfully_applied': True, 'resolved': True, 'tests_status': {'FAIL_TO_PASS': {'success': ['test_callable_path (model_fields.test_filepathfield.FilePathFieldTests)'], 'failure': []}, 'PASS_TO_PASS': {'success': ['test_path (model_fields.test_filepathfield.FilePathFieldTests)'], 'failure': []}, 'FAIL_TO_FAIL': {'success': [], 'failure': []}, 'PASS_TO_FAIL': {'success': [], 'failure': []}}}}
+Result for django__django-10924: resolved: True
+2026-07-13 03:21:44,779 - INFO - Attempting to stop container sweb.eval.django__django-10924.w3-sonnet-smoke...
+2026-07-13 03:21:59,743 - INFO - Attempting to remove container sweb.eval.django__django-10924.w3-sonnet-smoke...
+2026-07-13 03:21:59,759 - INFO - Container sweb.eval.django__django-10924.w3-sonnet-smoke removed.
+2026-07-13 03:21:59,759 - INFO - Attempting to remove image swebench/sweb.eval.x86_64.django_1776_django-10924:latest...
+2026-07-13 03:22:00,068 - INFO - Image swebench/sweb.eval.x86_64.django_1776_django-10924:latest removed.

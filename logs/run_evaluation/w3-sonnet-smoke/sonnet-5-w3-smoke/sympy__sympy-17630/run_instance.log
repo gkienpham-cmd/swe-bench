@@ -1,0 +1,73 @@
+2026-07-13 04:46:07,915 - INFO - Creating container for sympy__sympy-17630...
+2026-07-13 04:46:08,196 - INFO - Container for sympy__sympy-17630 created: 3824f76e259921f330387a35d872b1faeb62a9e7930ef52f2c9841911e813b0d
+2026-07-13 04:46:08,277 - INFO - Container for sympy__sympy-17630 started: 3824f76e259921f330387a35d872b1faeb62a9e7930ef52f2c9841911e813b0d
+2026-07-13 04:46:08,278 - INFO - Intermediate patch for sympy__sympy-17630 written to logs/run_evaluation/w3-sonnet-smoke/sonnet-5-w3-smoke/sympy__sympy-17630/patch.diff, now applying to container...
+2026-07-13 04:46:08,402 - INFO - >>>>> Applied Patch:
+Checking patch sympy/matrices/expressions/blockmatrix.py...
+Applied patch sympy/matrices/expressions/blockmatrix.py cleanly.
+
+2026-07-13 04:46:08,793 - INFO - Git diff before:
+diff --git a/sympy/matrices/expressions/blockmatrix.py b/sympy/matrices/expressions/blockmatrix.py
+index 95302a05ca..bd45f165e2 100644
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -164,7 +164,21 @@ def structurally_equal(self, other):
+     def _blockmul(self, other):
+         if (isinstance(other, BlockMatrix) and
+                 self.colblocksizes == other.rowblocksizes):
+-            return BlockMatrix(self.blocks*other.blocks)
++            self_rows, self_cols = self.blockshape
++            other_cols = other.blockshape[1]
++            rowblocksizes = self.rowblocksizes
++            colblocksizes = other.colblocksizes
++            product = self.blocks * other.blocks
++            rows = []
++            for i in range(self_rows):
++                row = []
++                for j in range(other_cols):
++                    entry = product[i, j]
++                    if not getattr(entry, 'is_Matrix', False):
++                        entry = ZeroMatrix(rowblocksizes[i], colblocksizes[j])
++                    row.append(entry)
++                rows.append(row)
++            return BlockMatrix(rows)
+ 
+         return self * other
+2026-07-13 04:46:08,794 - INFO - Eval script for sympy__sympy-17630 written to logs/run_evaluation/w3-sonnet-smoke/sonnet-5-w3-smoke/sympy__sympy-17630/eval.sh; copying to container...
+2026-07-13 04:46:15,497 - INFO - Test runtime: 6.65 seconds
+2026-07-13 04:46:15,499 - INFO - Test output for sympy__sympy-17630 written to logs/run_evaluation/w3-sonnet-smoke/sonnet-5-w3-smoke/sympy__sympy-17630/test_output.txt
+2026-07-13 04:46:15,593 - INFO - Git diff after:
+diff --git a/sympy/matrices/expressions/blockmatrix.py b/sympy/matrices/expressions/blockmatrix.py
+index 95302a05ca..bd45f165e2 100644
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -164,7 +164,21 @@ def structurally_equal(self, other):
+     def _blockmul(self, other):
+         if (isinstance(other, BlockMatrix) and
+                 self.colblocksizes == other.rowblocksizes):
+-            return BlockMatrix(self.blocks*other.blocks)
++            self_rows, self_cols = self.blockshape
++            other_cols = other.blockshape[1]
++            rowblocksizes = self.rowblocksizes
++            colblocksizes = other.colblocksizes
++            product = self.blocks * other.blocks
++            rows = []
++            for i in range(self_rows):
++                row = []
++                for j in range(other_cols):
++                    entry = product[i, j]
++                    if not getattr(entry, 'is_Matrix', False):
++                        entry = ZeroMatrix(rowblocksizes[i], colblocksizes[j])
++                    row.append(entry)
++                rows.append(row)
++            return BlockMatrix(rows)
+ 
+         return self * other
+2026-07-13 04:46:15,594 - INFO - Grading answer for sympy__sympy-17630...
+2026-07-13 04:46:15,594 - INFO - report: {'sympy__sympy-17630': {'patch_is_None': False, 'patch_exists': True, 'patch_successfully_applied': True, 'resolved': False, 'tests_status': {'FAIL_TO_PASS': {'success': ['test_issue_17624'], 'failure': ['test_zero_matrix_add']}, 'PASS_TO_PASS': {'success': ['test_bc_matmul', 'test_bc_matadd', 'test_bc_transpose', 'test_bc_dist_diag', 'test_block_plus_ident', 'test_BlockMatrix', 'test_block_collapse_explicit_matrices', 'test_BlockMatrix_trace', 'test_BlockMatrix_Determinant', 'test_squareBlockMatrix', 'test_BlockDiagMatrix', 'test_blockcut', 'test_reblock_2x2', 'test_deblock', 'test_sort_key', 'test_matadd_sympify', 'test_matadd_of_matrices', 'test_doit_args', 'test_generic_identity'], 'failure': []}, 'FAIL_TO_FAIL': {'success': [], 'failure': []}, 'PASS_TO_FAIL': {'success': [], 'failure': []}}}}
+Result for sympy__sympy-17630: resolved: False
+2026-07-13 04:46:15,594 - INFO - Attempting to stop container sweb.eval.sympy__sympy-17630.w3-sonnet-smoke...
+2026-07-13 04:46:30,524 - INFO - Attempting to remove container sweb.eval.sympy__sympy-17630.w3-sonnet-smoke...
+2026-07-13 04:46:30,549 - INFO - Container sweb.eval.sympy__sympy-17630.w3-sonnet-smoke removed.
+2026-07-13 04:46:30,549 - INFO - Attempting to remove image swebench/sweb.eval.x86_64.sympy_1776_sympy-17630:latest...
+2026-07-13 04:46:30,799 - INFO - Image swebench/sweb.eval.x86_64.sympy_1776_sympy-17630:latest removed.
