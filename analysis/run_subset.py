@@ -28,6 +28,11 @@ SUBSET = Path("analysis/dev_subset_30.json")
 
 
 def main() -> int:
+    # Line-buffer both streams: under nohup/pipe redirection stdout is
+    # block-buffered, so progress prints lagged the run by minutes and the
+    # manifest was the only live signal (D16 finding, LOG 2026-07-12).
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--tasks-dir", required=True, help="dir of <instance_id>.json full task rows")
     ap.add_argument("--out-dir", required=True, help="run directory (trajectories, patches, console logs)")
