@@ -62,10 +62,12 @@ the same 23/30 runs exit clean (but not the same task set — the capped set
 shifted). Flags: 38 (subtypes: add-own-test 20 / modify-existing 14 /
 delete 4 — proportions match run 1's 25/15/5; flags_classified.json).
 
-**Billing discrepancy (open, W3 D18):** console balance implies ~$2.6 more
-spend than the trajectory-summed cost model (~1.5× ≈ sticker-vs-intro
-pricing ratio) — reconcile against the console usage breakdown before the
-next paid run; all $ figures above are cost-model figures.
+**Billing reconciled (W3 D18):** console usage page (19.67M tokens in /
+350k out for July, incl. cache reads) matches trajectory sums exactly, and
+intro pricing ($2/$10) reproduces the ledger to the cent ($10.00 deposited
+− $9.7518 spent = console's $0.25 remaining). Cost model validated
+end-to-end. Lesson: console BALANCE lags usage posting — reconcile against
+the usage page, not a fresh post-run balance snapshot.
 
 ## Baseline locked
 
