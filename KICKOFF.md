@@ -20,7 +20,7 @@ Session-end protocol: draft the LOG.md entry (measured / changed / cost / next) 
 --- STATUS (edit before pasting) ---------------------------
 Day: W_ D_  (day __ of 42) | Date:
 Last session outcome (1 line):
-Spent to date: $____ of $500 (from LOG.md)
+Spent to date: $____ of $150 (from LOG.md)
 Today's intended focus:
 Blockers / carryover:
 ------------------------------------------------------------

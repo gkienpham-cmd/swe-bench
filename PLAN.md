@@ -6,7 +6,7 @@ Near-frozen reference. Progress, decisions, and spend live in [LOG.md](LOG.md); 
 
 - **Deliverable:** a from-scratch SWE-bench Lite agent (raw Messages API tool-use loop + Docker sandbox + official eval harness), a technical report, an HTML trajectory replay viewer, and a reward-hacking study.
 - **Headline metric:** resolved % on ONE clean full 300-task SWE-bench Lite run (Week 6). Floor: 40%. Stretch: 65%. Do not expect to beat mini-SWE-agent — the point is to build, measure honestly, and analyze failures.
-- **Budget:** $500 hard cap, **API spend only**. The Claude subscription (Max 5x, ~$100/mo × 1.5 months ≈ $150) is fixed overhead outside the cap.
+- **Budget:** $150 hard cap, **API spend only** (lowered from $500 on 2026-07-14, W4 D23: measured W3 costs came in ~3x under the planning figure — $0.143/task vs $0.30–0.55 — so the original cap was sized to assumptions reality beat). The Claude subscription (Max 5x, ~$100/mo × 1.5 months ≈ $150) is fixed overhead outside the cap.
 - **Eval model:** pin the exact Sonnet ID at Week 3 start after a live check (rule 7). Planning assumption: `claude-sonnet-5` — intro pricing $2/$10 per MTok runs through 2026-08-31, covering the whole project window. Dev model: `claude-haiku-4-5`.
 - **Dev subset:** a 30-task Lite subset frozen ONCE in Week 3 (seed list committed to the repo, never re-picked). All its numbers are labeled dev-subset; the overfitting risk goes in the report's limitations.
 
@@ -74,23 +74,27 @@ Goal: publication-grade artifact.
 
 ## Budget
 
-Pricing verified 2026-07-10 against the Claude API reference (rule 7 — re-verify before each paid run):
+**Cap: $150** (revised 2026-07-14 from $500; decision in LOG.md W4D22-23 follow-up). Table rescaled the same day to MEASURED costs — W3 baseline $0.143/task on Sonnet 5, n=2 runs, cost model reconciled to the cent against the console usage page — replacing the original $0.30–0.55/task planning figure that reality beat by ~3x. W1–W3 rows are actuals from LOG.md.
+
+Pricing verified 2026-07-10, re-verified live 2026-07-12 (rule 7 — re-verify before each paid run):
 Haiku 4.5 $1/$5 per MTok · Sonnet 5 $3/$15, intro **$2/$10 through 2026-08-31** · Sonnet 4.6 $3/$15 · Opus $5/$25 (banned regardless).
-Cache reads ≈0.1× input price, writes 1.25× (5-min TTL) — caching pays only on reused prefixes. Batch API: −50% on input and output, ≤24h turnaround, results keyed by `custom_id`, arrive in any order.
-Note: Sonnet 5 uses a new tokenizer (~30% more tokens for the same text than Sonnet 4.6) — budget tokens/task against measurements on the pinned model, not older numbers.
-Planning figure: **$0.30–0.55/task** on Sonnet with batch + cache (mini-SWE-agent-class cost is ~$0.55/task uncached).
+Cache reads ≈0.1× input price, writes 1.25× (5-min TTL) — caching pays only on reused prefixes (verified live: capped runs land near a dime on Haiku, $0.14 on Sonnet). Batch API: −50%, but **not used for agentic runs** (decision on record, LOG 2026-07-12/13: per-turn batch waves cost days of wall-clock and cache-TTL misses; batch relieves a non-binding constraint).
+Note: Sonnet 5 uses a new tokenizer (~30% more tokens for the same text than Sonnet 4.6) — even so it is cheaper than 4.6 at intro pricing AND more capable; budget tokens/task against measurements on the pinned model, not older numbers.
 
 | Stage | Week | Model | Volume | Est. $ | Cumulative |
 |---|---|---|---|---|---|
-| Dev iteration (API smoke tests; most dev on subscription) | W1–2 | Haiku | small | ~$10 | $10 |
-| 30-task baseline ×2 | W3 | Sonnet | 60 tasks | $20–35 | ~$45 |
-| Triage-driven reruns | W3–4 | mixed | ~40 tasks | $15–25 | ~$70 |
-| Full-scaffold 50-task run | W4 | Sonnet | 50 tasks | $15–28 | ~$98 |
-| Ablations A + B | W5 | Sonnet | 100 tasks | $30–56 | ~$154 |
-| Guardrail-relax experiment (hard cap) | W5 | Sonnet | ~50 tasks | ≤$30 | ~$184 |
-| Variance re-run | W5 | Sonnet | 50 tasks | $15–28 | ~$212 |
-| Full Lite run | W6 | Sonnet | 300 tasks | $90–165 | ~$377 |
-| Contingency (~20%) | — | — | — | ~$75 | **~$450** |
+| W1–2 dev + gates (ACTUAL) | W1–2 | Haiku | small | $1.18 | $1.18 |
+| W3 baseline ×2 + harness (ACTUAL) | W3 | Sonnet | 60 tasks | $8.59 | $9.77 |
+| Localization probe + 30-task run (+ rerun if ambiguous) | W4 | Sonnet | ~35–65 tasks | $6–12 | ~$20 |
+| Self-verification smokes + 30-task run | W4 | mixed | ~30 tasks | $6–8 | ~$28 |
+| Full-scaffold 50-task run (gate W4) | W4 | Sonnet | 50 tasks | $9–12 | ~$40 |
+| Ablations A + B | W5 | Sonnet | 60 tasks | $12–18 | ~$56 |
+| Guardrail-relax experiment (hard cap) | W5 | Sonnet | ~50 tasks | ≤$15 | ~$70 |
+| Variance re-run (skip if flip-matrix agreement is stable) | W5 | Sonnet | 50 tasks | $8–12 | ~$80 |
+| Full Lite run (MUST land inside the intro-pricing window) | W6 | Sonnet | 300 tasks | $45–60 | ~$135 |
+| Contingency (~10%) | — | — | — | ~$15 | **~$150** |
+
+Named risks at the $150 cap: (a) worst case sums to the cap with no slack — the levers, in order, are the trimmed guardrail-relax cap (was ≤$30, now ≤$15), skipping the W5 variance rerun when per-task agreement already demonstrates stability, and the ~$15 contingency; (b) intro pricing expires 2026-08-31 — a W6 slip past it adds ~$25–35 to the full run and busts the cap; (c) scaffold stages add turns — if the measured full-scaffold $/task exceeds ~$0.20, re-project W5–W6 before launching them (rule 4d).
 
 ## Failure taxonomy (seed — extend during W3 triage)
 

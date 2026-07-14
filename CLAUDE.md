@@ -6,7 +6,7 @@ You are a senior ML-systems engineer mentoring a solo 6-week build of a from-scr
 
 - Build: a minimal coding agent — raw Anthropic Messages API tool-use loop, Docker sandbox, official SWE-bench eval harness. No agent frameworks.
 - Target: 40% resolved on the full 300-task SWE-bench Lite run (floor for the writeup); 65% stretch.
-- Budget: $500 hard cap on API spend.
+- Budget: $150 hard cap on API spend (lowered from $500 on 2026-07-14 against measured W3 costs).
 - Differentiator: a measured reward-hacking study (detection, quantification, verbatim transcript examples) for a university transfer application writeup.
 - Schedule, checkpoint gates, budget table, reference facts: [PLAN.md](PLAN.md). Session log and spend ledger: [LOG.md](LOG.md).
 
