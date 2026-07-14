@@ -46,6 +46,13 @@ def main() -> int:
                     help="docker rmi the image after each task (only if this run pulled it)")
     ap.add_argument("--max-turns", type=int, default=None,
                     help="forwarded to agent.loop (plumbing tests only; eval runs use the default cap)")
+    # W4 localization stage / W5 ablation A. Always forwarded EXPLICITLY to
+    # agent.loop — an eval arm must never depend on a silent loop.py default.
+    ap.add_argument("--localization", action=argparse.BooleanOptionalAction, default=True,
+                    help="two-phase LOCALIZE/FIX directive + edit_file soft gate; "
+                    "--no-localization is the ablation-A / baseline-w3 arm")
+    ap.add_argument("--localization-max-turns", type=int, default=None,
+                    help="forwarded to agent.loop when set (default: loop.py's 12)")
     args = ap.parse_args()
 
     subset = json.loads(Path(args.subset).read_text())
@@ -104,6 +111,9 @@ def main() -> int:
         ]
         if args.max_turns is not None:
             argv += ["--max-turns", str(args.max_turns)]
+        argv += ["--localization" if args.localization else "--no-localization"]
+        if args.localization_max_turns is not None:
+            argv += ["--localization-max-turns", str(args.localization_max_turns)]
         print(f"[{i}/{len(task_files)}] {iid}: starting ({images[iid]})")
         t0 = time.monotonic()
         with open(out / f"console_{iid}.log", "w") as log:
@@ -116,7 +126,11 @@ def main() -> int:
         wall = round(time.monotonic() - t0, 1)
         print(f"[{i}/{len(task_files)}] {iid}: exit {rc} in {wall}s")
         manifest = [m for m in manifest if m["instance_id"] != iid]
-        manifest.append({"instance_id": iid, "exit_code": rc, "wall_s": wall, "model": args.model})
+        # localization recorded here AND in the trajectory's run-config meta
+        # line — the W5 ablation arm must be identifiable from two
+        # independent places.
+        manifest.append({"instance_id": iid, "exit_code": rc, "wall_s": wall,
+                         "model": args.model, "localization": args.localization})
         manifest_path.write_text(json.dumps(manifest, indent=1) + "\n")
         if args.rm_after and pulled_here:
             subprocess.run(["docker", "rmi", images[iid]], capture_output=True)

@@ -8,6 +8,7 @@ per turn from usage fields and printed at exit ($/task is a first-class KPI).
 
 import argparse
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -47,6 +48,90 @@ SYSTEM_PROMPT = (
 SYSTEM_BLOCKS = [
     {"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}
 ]
+
+# W4 D22-23 localization stage. Lives in the FIRST USER MESSAGE, not the
+# system prompt: SYSTEM_BLOCKS + TOOL_SCHEMAS are the frozen 1,422-token
+# cross-run cached prefix (baseline-w3) and must stay byte-identical across
+# both W5 ablation arms. Targets the measured wrong-FILE failures
+# (mpl-23476, sympy-17630, django-17051 run 2): the agent committed to one
+# hypothesis without ever enumerating an alternative at the symptom site.
+# Joined by string concatenation, never str.format — problem statements
+# contain literal {} in code snippets.
+LOCALIZATION_PREFIX = """\
+You will fix a bug in this repository. Work in two phases.
+
+PHASE 1 - LOCALIZE (required before any edit; the edit_file tool is locked \
+until you post the plan below):
+Investigate the repository and determine WHERE the fix belongs. The most \
+common mistake is editing where the symptom is manipulated instead of where \
+the defect actually lives. You must consider at least 2 distinct candidate \
+locations, and at least one candidate must be in the code path where the \
+reported symptom is produced (e.g. where the failing object is created, \
+serialized, converted, or returned). Gather concrete evidence for each \
+candidate: code you actually read, call paths you traced.
+
+Then post a message containing exactly this structure:
+LOCALIZATION:
+- candidate: <path/to/file.py>::<function_or_class> -- evidence: <what you read that supports this>
+- candidate: <path/to/other_file.py>::<symbol> -- evidence: <...>
+CHOSEN: <path/to/file.py>::<symbol> -- reason: <why this beats every alternative you listed>
+
+PHASE 2 - FIX:
+Make the smallest change that fixes the root cause at the chosen location. \
+If your fix turns out to be wrong, you may revise by posting a new \
+LOCALIZATION block and editing again.
+
+--- PROBLEM STATEMENT ---
+"""
+
+LOCALIZATION_LOCKED_MSG = (
+    "edit_file is locked: you have not yet posted a LOCALIZATION plan. Post a "
+    'plain-text message containing a "LOCALIZATION:" block with at least 2 '
+    'candidate locations (file::symbol -- evidence) and a "CHOSEN:" line, '
+    "then retry this edit."
+)
+
+LOCALIZATION_NUDGE = (
+    "You have used many turns without posting a LOCALIZATION plan. Commit now: "
+    "post the LOCALIZATION block with your best current candidates and a "
+    "CHOSEN line, then implement the fix at the chosen location. edit_file is "
+    "now unlocked either way."
+)
+
+# Candidate/chosen extraction for the localization_plan meta line. Parse
+# failure must NOT block the unlock — the gate keys off sentinel presence
+# only; raw_block on the meta line keeps W5 analysis computable even if
+# these regexes regress (rule 5 spirit).
+_CANDIDATE_RE = re.compile(r"^\s*-\s*candidate:\s*(\S+)", re.MULTILINE)
+_CHOSEN_RE = re.compile(r"^\s*CHOSEN:\s*(\S+)", re.MULTILINE)
+
+
+def _plan_emitted(content) -> str | None:
+    """Return the first text block containing both plan sentinels, else None."""
+    for block in content:
+        if getattr(block, "type", None) != "text":
+            continue
+        text = getattr(block, "text", "") or ""
+        lines = [ln.strip() for ln in text.splitlines()]
+        if any(ln.startswith("LOCALIZATION:") for ln in lines) and any(
+            ln.startswith("CHOSEN:") for ln in lines
+        ):
+            return text
+    return None
+
+
+def _parse_plan(block_text: str) -> dict:
+    """Best-effort structure for the meta line; never raises."""
+    candidates = _CANDIDATE_RE.findall(block_text)
+    chosen_m = _CHOSEN_RE.search(block_text)
+    chosen = chosen_m.group(1) if chosen_m else None
+    return {
+        "n_candidates": len(candidates),
+        "candidate_files": [c.split("::")[0] for c in candidates],
+        "candidates": candidates,
+        "chosen": chosen,
+        "parse_ok": bool(candidates) and chosen is not None,
+    }
 
 
 def _move_cache_marker(messages: list) -> None:
@@ -122,6 +207,7 @@ def run(
     sandbox_image: str | None = None, max_cost_usd: float | None = None,
     compact_at_tokens: int | None = None,
     sandbox_workdir: str = "/workspace", sandbox_preloaded: bool = False,
+    localization: bool = False, localization_max_turns: int = 12,
 ) -> int:
     # Rule 4c: raw metered API key only. Pin it explicitly so the SDK cannot
     # silently fall back to an OAuth profile or auth token.
@@ -156,7 +242,9 @@ def run(
                                 "sandbox_preloaded": sandbox_preloaded})
         budget = BudgetTracker(model, max_cost_usd=max_cost_usd)
         rc = _loop(client, log, task, model, workdir, max_turns, sandbox, budget,
-                   compact_at_tokens=compact_at_tokens)
+                   compact_at_tokens=compact_at_tokens,
+                   localization=localization,
+                   localization_max_turns=localization_max_turns)
         # Schema v1: persist the final in-container patch on EVERY exit path
         # (_loop returns on clean finish, cost ceiling, and max-turns alike).
         # Logged as a meta line AND written as a .patch beside the trajectory
@@ -176,10 +264,24 @@ def run(
 
 
 def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, sandbox, budget,
-          compact_at_tokens: int | None = None) -> int:
-    log.append("user", task)
-    messages = [{"role": "user", "content": task}]
+          compact_at_tokens: int | None = None,
+          localization: bool = False, localization_max_turns: int = 12) -> int:
+    # The trajectory's index-0 user line is the WRAPPED message — what the
+    # model actually saw (index 0 is compaction-protected by construction).
+    task_message = LOCALIZATION_PREFIX + task if localization else task
+    log.append("user", task_message)
+    messages = [{"role": "user", "content": task_message}]
     hack_flags = 0
+    plan_emitted = False      # gate unlocks on sentinel presence only
+    forced_unlock = False     # turn-K commit nudge fired
+    last_plan_block = None    # re-plans are logged once per distinct block
+    if localization:
+        log.append("meta", {
+            "scaffold_stage": "localization",
+            "localization": True,
+            "localization_max_turns": localization_max_turns,
+            "prefix_untouched": True,
+        })
 
     # Sonnet 5 runs ADAPTIVE thinking when the `thinking` param is omitted
     # (Haiku: omission = no thinking). Disable it explicitly so the W3 baseline
@@ -208,6 +310,18 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
             usage=usage_dict(response.usage),
             cost_usd=cost,
         )
+
+        if localization:
+            block_text = _plan_emitted(response.content)
+            if block_text is not None and block_text != last_plan_block:
+                last_plan_block = block_text
+                plan_emitted = True
+                log.append("meta", {
+                    "localization_plan": True,
+                    "turn": turn,
+                    "raw_block": block_text,
+                    **_parse_plan(block_text),
+                })
 
         if response.stop_reason != "tool_use":
             final = next((b.text for b in response.content if b.type == "text"), "")
@@ -243,7 +357,16 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
             if flag:
                 hack_flags += 1
                 print(f"[REWARD-HACK FLAG: {flag} — {tu.name} on {tu.input.get('path')}]")
-            content, is_error = dispatch(workdir, tu.name, tu.input, sandbox=sandbox)
+            # Soft localization gate: reject edit_file with a corrective
+            # error until a plan is posted (or the turn-K unlock fires).
+            # dispatch() never runs, so nothing is written; the attempt is
+            # still a full tool line (and reward_hack_flag above still
+            # fires on gated attempts — attempts are findings, rule 6).
+            if localization and not plan_emitted and not forced_unlock and tu.name == "edit_file":
+                content, is_error = LOCALIZATION_LOCKED_MSG, True
+                log.append("meta", {"localization_gate_reject": True, "turn": turn})
+            else:
+                content, is_error = dispatch(workdir, tu.name, tu.input, sandbox=sandbox)
             results.append(
                 {"type": "tool_result", "tool_use_id": tu.id, "content": content, "is_error": is_error}
             )
@@ -256,6 +379,21 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
                 tool_result_full=content,
                 reward_hack_flag=flag,
             )
+        # Turn-K commit nudge: past localization_max_turns without a plan,
+        # unlock editing unconditionally and demand commitment — the gate
+        # must never manufacture a zero-edit cap burn (sympy-17630 run-2
+        # mode). Appended as an extra text block on this turn's tool_results
+        # user message, preserving role alternation.
+        if (localization and not plan_emitted and not forced_unlock
+                and turn + 1 >= localization_max_turns):
+            results.append({"type": "text", "text": LOCALIZATION_NUDGE})
+            forced_unlock = True
+            log.append("meta", {
+                "localization_forced_unlock": True,
+                "turn": turn,
+                "plan_emitted": False,
+            })
+
         messages.append({"role": "user", "content": results})
         _move_cache_marker(messages)
 
@@ -266,7 +404,7 @@ def _loop(client, log, task: str, model: str, workdir: Path, max_turns: int, san
         if compact_at_tokens:
             est_prompt = (
                 prompt_tokens(response.usage) + response.usage.output_tokens
-                + estimate_tokens(sum(len(r["content"]) for r in results))
+                + estimate_tokens(sum(len(r.get("content", r.get("text", ""))) for r in results))
             )
             if est_prompt >= compact_at_tokens:
                 low_water = compact_at_tokens // 2
@@ -342,6 +480,24 @@ def main() -> int:
         help="The image already contains the repo at --sandbox-workdir; skip "
         "the --workdir copy-in (use with official sweb.eval images).",
     )
+    # W4 D22-23 localization stage. Cited failures (rule 1): mpl-23476 and
+    # sympy-17630 edited the wrong FILE in both baseline runs (verified
+    # against gold patches), django-17051 run 2 likewise then reverted to an
+    # empty diff. --no-localization is the W5 ablation-A arm and is
+    # byte-identical to baseline-w3 behavior (selftest-enforced).
+    parser.add_argument(
+        "--localization", action=argparse.BooleanOptionalAction, default=True,
+        help="Wrap the task in the two-phase LOCALIZE/FIX directive and soft-"
+        "lock edit_file until a LOCALIZATION plan (>=2 candidates + CHOSEN) "
+        "is posted. --no-localization reproduces the baseline-w3 arm.",
+    )
+    parser.add_argument(
+        "--localization-max-turns", type=int, default=12,
+        help="Turn at which an un-posted plan force-unlocks editing and a "
+        "commit nudge is injected. Default 12: baseline resolved tasks' "
+        "median first edit is turn 4-4.5 (p75 9); the two wrong-file "
+        "failures first edited at turns 17 and 24.",
+    )
     args = parser.parse_args()
     # <=0 means "no ceiling" now that the default is a real number.
     max_cost = args.max_cost_usd if args.max_cost_usd and args.max_cost_usd > 0 else None
@@ -350,6 +506,7 @@ def main() -> int:
         args.max_turns, sandbox_image=args.sandbox_image, max_cost_usd=max_cost,
         compact_at_tokens=args.compact_at_tokens if args.compact_at_tokens > 0 else None,
         sandbox_workdir=args.sandbox_workdir, sandbox_preloaded=args.sandbox_preloaded,
+        localization=args.localization, localization_max_turns=args.localization_max_turns,
     )
 
 

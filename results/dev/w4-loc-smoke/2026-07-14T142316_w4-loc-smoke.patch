@@ -1,0 +1,25 @@
+diff --git a/calc/__pycache__/__init__.cpython-312.pyc b/calc/__pycache__/__init__.cpython-312.pyc
+new file mode 100644
+index 0000000..0148dc1
+Binary files /dev/null and b/calc/__pycache__/__init__.cpython-312.pyc differ
+diff --git a/calc/__pycache__/pricing.cpython-312.pyc b/calc/__pycache__/pricing.cpython-312.pyc
+new file mode 100644
+index 0000000..83ab378
+Binary files /dev/null and b/calc/__pycache__/pricing.cpython-312.pyc differ
+diff --git a/calc/pricing.py b/calc/pricing.py
+index f073098..757d956 100644
+--- a/calc/pricing.py
++++ b/calc/pricing.py
+@@ -3,7 +3,7 @@
+ 
+ def apply_discount(price: float, percent: float) -> float:
+     """Return the price after applying a percentage discount."""
+-    return price * (1 + percent / 100)
++    return price * (1 - percent / 100)
+ 
+ 
+ def clamp_price(price: float, floor: float = 0.0) -> float:
+diff --git a/tests/__pycache__/test_pricing.cpython-312-pytest-8.3.3.pyc b/tests/__pycache__/test_pricing.cpython-312-pytest-8.3.3.pyc
+new file mode 100644
+index 0000000..0f58614
+Binary files /dev/null and b/tests/__pycache__/test_pricing.cpython-312-pytest-8.3.3.pyc differ
